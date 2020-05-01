@@ -1,12 +1,15 @@
-library(shiny)
+options(repos = BiocManager::repositories())
 library(Rdisop)
 library(MetaboCoreUtils)
+library(shiny)
+library(CompoundDb)
 
-getmzneut <- function(mz = numeric(0),
-                      adduct = c("[M+H]+", "[M+Na]+", 
-                                 "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
-                                 "[2M-H]-", "[2M+H]+",
-                                 "[M+H-H2O]+")){
+getmzneut <- function(
+  mz = numeric(0),
+  adduct = c("[M+H]+", "[M+Na]+", 
+             "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
+             "[2M-H]-", "[2M+H]+",
+             "[M+H-H2O]+")){
   addtb <- rbind(
     c("[M+H]+", 1.007276),
     c("[M+Na]+", 22.98980),
@@ -38,12 +41,13 @@ getform <- function(mzval = numeric(0),
   )$formula
 }
 
-update_form <- function(formulas = character(0),
-                        adduct = c("[M+H]+", "[M+Na]+", 
-                                   "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
-                                   "[2M-H]-", "[2M+H]+",
-                                   "[M+H-H2O]+"),
-                        action = c("add", "remove")){
+update_form <- function(
+  formulas = character(0),
+  adduct = c("[M+H]+", "[M+Na]+", 
+             "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
+             "[2M-H]-", "[2M+H]+",
+             "[M+H-H2O]+"),
+  action = c("add", "remove")){
   addtb <- data.frame(rbind(
     c("[M+H]+", "H"),
     c("[M+Na]+", "Na"),
@@ -70,7 +74,6 @@ update_form <- function(formulas = character(0),
   
   tmp.frm1 <- data.frame(formulas)
   tmp.frm1$formulas <- as.character(tmp.frm1$formulas)
-  #tmp.frm1 <- rbind(addtb[addtb[, 1] == adduct, 2], tmp.frm1)
   tmp.frm1 <- cbind(
     tmp.frm1, 
     do.call(dplyr::bind_rows, 
@@ -202,20 +205,40 @@ isotope_rule <- function(formulas = character(0),
   tmp.frm1$A1 >= A1_range[1] & tmp.frm1$A1 <= A1_range[2]
 }
 
+rank_form <- function(formulas = character(0),
+                      i1 = numeric(0),
+                      i2 = numeric(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1$A1 <- NA
+  tmp.frm1$A2 <- NA
+  for(i in 1:nrow(tmp.frm1)){
+    tmpx <- Rdisop::getMolecule(tmp.frm1$formula[i])$isotopes[[1]]
+    tmp.frm1$A1[i] <- (tmpx[2, 2] / tmpx[2, 1])*100
+    tmp.frm1$A2[i] <- (tmpx[2, 3] / tmpx[2, 1])*100
+  }
+  tmp.frm1$A1d <- abs(tmp.frm1$A1 - i1)
+  tmp.frm1$A2d <- abs(tmp.frm1$A2 - i2)
+  tmp.frm1$Ad <- NA
+  for(i in 1:nrow(tmp.frm1)){
+    tmp.frm1$Ad[i] <- mean(c(tmp.frm1$A1d[i], tmp.frm1$A2d[i]))
+  }
+  tmp.frm1 <- tmp.frm1[order(tmp.frm1$Ad), ]
+  seq(nrow(tmp.frm1))
+}
 
 
+
+# Shiny server ------------------------------
 ui <- fluidPage(
   
-  # App title ----
   titlePanel("Formula Finder"),
   
-  # *Input() functions
+  # Options ------------------------------------
   sidebarLayout(
     
-    # Sidebar panel for inputs ----
     sidebarPanel(
       
-      # Input: Slider for the number of bins ----
       fluidRow(
         column(6,
                numericInput(inputId = "mz",
@@ -225,9 +248,9 @@ ui <- fluidPage(
         
         column(4, 
                numericInput(inputId = "ppm",
-                                           label = "ppm:",
-                                           value = 1,
-                                           step = 1))
+                            label = "ppm:",
+                            value = 10,
+                            step = 1))
       ),
       
       radioButtons("adduct", 
@@ -255,13 +278,27 @@ ui <- fluidPage(
                     label = "RPU rule", 
                     value = TRUE),
       
+      hr(),
+      
       h3("Experimental rules:"),
-      checkboxInput("iso_1", 
-                    label = "Isotope 1", 
-                    value = TRUE),
-      checkboxInput("iso_2", 
-                    label = "Isotope 2", 
-                    value = TRUE),
+      fluidRow(
+        column(3,
+               checkboxInput("iso_1", 
+                             label = "Isotope 1", 
+                             value = TRUE)),
+        column(9,
+               sliderInput("error1", label = "", min = 0, 
+                           max = 10, value = 0.4, step = 0.1))
+      ),
+      fluidRow(column(3,
+                      checkboxInput("iso_2", 
+                                    label = "Isotope 2", 
+                                    value = TRUE)),
+               column(9,
+                      sliderInput("error2", label = "", min = 0, 
+                                  max = 10, value = 2, step = 0.1))
+               ),
+      
       fluidRow(
         column(6,
                numericInput(inputId = "mz1",
@@ -295,21 +332,25 @@ ui <- fluidPage(
       
     ),
     
-    # *Output() functions
-    
+    # Output ------------------------------------
     mainPanel(
-      # Output: Table ----
       h3("Formulas suggested:"),
       DT::dataTableOutput("table"),
       hr(),
-      h3("Isotopic  pattern:"),
-      textInput("formula", label = "", value = "C11H12N2O2"),
-      plotOutput(outputId = "isopatt"),
-      hr(),
-      h3("Adducts:"),
-      fluidRow(verbatimTextOutput("pos")),
-      fluidRow(verbatimTextOutput("neg"))
+      fluidRow(
+        column(4,
+               h3("Isotopic  pattern:"),
+               textInput("formula", label = "", value = "C11H12N2O2"),
+               plotOutput(outputId = "isopatt")
+        ),
+        column(1),
+        column(2,
+               h3("Adducts:"),
+               fluidRow(verbatimTextOutput("pos")),
+               fluidRow(verbatimTextOutput("neg"))
+        )
       )
+    )
   ))
 
 
@@ -321,7 +362,7 @@ names(adducts) <- c("[M+H]+", "[M-H]-")
 
 
 server <- function(input, output){
-
+  
   
   data <- reactive({
     mzneutral <- getmzneut(input$mz, 
@@ -336,12 +377,20 @@ server <- function(input, output){
       decomposeMass(mzneutral, ppm = input$ppm)$exactmass - mzneutral) / 
         decomposeMass(mzneutral, ppm = input$ppm)$exactmass) * 1e6, 1)
     
+    # Rules -----
     myform$H_rule <- H_rule(myform$formula)
     myform$H_rule2 <- H_rule2(mzneutral, myform$formula)
     myform$N_rule <- N_rule(mzneutral, myform$formula)
     myform$RPU_rule <- RPU_rule(myform$formula)
-    myform$iso_1 <- isotope_rule(myform$formula, (input$i2/input$i1)*100, isotope = 1)
-    myform$iso_2 <- isotope_rule(myform$formula, (input$i3/input$i1)*100, isotope = 2)
+    myform$iso_1 <- isotope_rule(myform$formula, 
+                                 (input$i2/input$i1)*100, 
+                                 range = input$error1, isotope = 1)
+    myform$iso_2 <- isotope_rule(myform$formula, 
+                                 (input$i3/input$i1)*100, 
+                                 range = input$error2, isotope = 2)
+    myform$rank <- rank_form(
+      myform$formula, (input$i2/input$i1)*100, (input$i3/input$i1)*100
+      )
     
     if(input$H_rule){myform <- myform[myform$H_rule, ]} 
     if(input$H_rule2){myform <- myform[myform$H_rule2, ]} 
@@ -351,14 +400,15 @@ server <- function(input, output){
     if(input$iso_2){myform <- myform[myform$iso_2, ]} 
     
     colnames(myform) <- c("Formula", "ppm", "H rule", "H rule (II)", 
-                          "N rule", "RPU rule", "Isotope 1", "Isotope 2")
+                          "N rule", "RPU rule", "Isotope 1", "Isotope 2",
+                          "Rank")
     myform
   })
   
   isopt <- reactive({
     formneutral <- update_form(input$formula, 
-                           names(which(adducts == input$adduct)),
-                           action = "add")
+                               names(which(adducts == input$adduct)),
+                               action = "add")
     
     dt <- data.frame(t(getIsotope(getMolecule(formneutral))[,1:3]))
     dt$X3 <- (dt$X2/max(dt$X2))*100
@@ -370,17 +420,18 @@ server <- function(input, output){
   output$table <- DT::renderDataTable(DT::datatable({
     data()
   }, 
-  options = list(pageLength = nrow(data()), dom = "t" ),
+  options = list(pageLength = 5, dom = "tip" ),
   rownames= FALSE))
   
   output$isopatt <- renderPlot({
     plot(isopt()[,"X1"],isopt()[,"X3"], 
          type = "h", xlab = "m/z value", ylab = "Relative intensity", 
-         col = "#B2DF8A90", lwd = 10, 
-         xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, max(isopt()[3,"X1"], input$mz3) + 0.3))
+         col = "#B2DF8A", lwd = 5, ylim = c(0, 100), 
+         xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, 
+                  max(isopt()[3,"X1"], input$mz3) + 0.3))
     lines(c(input$mz1, input$mz2, input$mz3), 
           c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100), 
-          type = "h", col = "#E31A1C")
+          type = "h", lwd = 5, col = "#E31A1C30")
     legend("topright", legend = c("Theoretical", "Experimental"),
            col = c("#B2DF8A", "#E31A1C"), lty = 1)
   })
@@ -389,12 +440,16 @@ server <- function(input, output){
   output$pos <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
-    unlist(mass2mz(mzneutral, adduct = c("[M+H]+", "[M+Na]+"))) })
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M+H]+", "[M+Na]+"))) 
+    })
   
   output$neg <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
-    unlist(mass2mz(mzneutral, adduct = c("[M-H]-", "[M-H+HCOOH]-"))) })
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+    })
 }
 
 
