@@ -6,13 +6,14 @@ library(CompoundDb)
 
 getmzneut <- function(
   mz = numeric(0),
-  adduct = c("[M+H]+", "[M+Na]+", 
+  adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", 
              "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+")){
   addtb <- rbind(
     c("[M+H]+", 1.007276),
     c("[M+Na]+", 22.98980),
+    c("[M+K]+", 38.96371),
     c("[M-H]-", -1.007276),
     c("[M-H+HCOOH]-", 44.99820),
     c("[M+Cl]-", 34.96885),
@@ -230,140 +231,168 @@ rank_form <- function(formulas = character(0),
 
 
 # Shiny server ------------------------------
-ui <- fluidPage(
+ui <- navbarPage(
+  "",
   
-  titlePanel("Formula Finder"),
-  
-  # Options ------------------------------------
-  sidebarLayout(
-    
-    sidebarPanel(
-      
-      fluidRow(
-        column(6,
-               numericInput(inputId = "mz",
-                            label = "m/z value:",
-                            value = 205.0971,
-                            step = 0.0001)),
-        
-        column(4, 
-               numericInput(inputId = "ppm",
-                            label = "ppm:",
-                            value = 10,
-                            step = 1))
-      ),
-      
-      radioButtons("adduct", 
-                   label = "Adduct:",
-                   choices = list("[M+H]+" = 1, "[M-H]-" = 2), 
-                   selected = 1),
-      
-      hr(),
-      
-      h3("Heuristic rules:"),
-      
-      checkboxInput("H_rule", 
-                    label = "H rule", 
-                    value = TRUE),
-      
-      checkboxInput("H_rule2", 
-                    label = "H rule (II)", 
-                    value = TRUE),
-      
-      checkboxInput("N_rule", 
-                    label = "N rule", 
-                    value = TRUE),
-      
-      checkboxInput("RPU_rule", 
-                    label = "RPU rule", 
-                    value = TRUE),
-      
-      hr(),
-      
-      h3("Experimental rules:"),
-      fluidRow(
-        column(3,
-               checkboxInput("iso_1", 
-                             label = "Isotope 1", 
-                             value = TRUE)),
-        column(9,
-               sliderInput("error1", label = "", min = 0, 
-                           max = 10, value = 0.4, step = 0.1))
-      ),
-      fluidRow(column(3,
-                      checkboxInput("iso_2", 
-                                    label = "Isotope 2", 
-                                    value = TRUE)),
-               column(9,
-                      sliderInput("error2", label = "", min = 0, 
-                                  max = 10, value = 2, step = 0.1))
+  # Formula finder -----------
+  tabPanel("Formula Finder",
+           
+           # Options ------------------------------------
+           sidebarLayout(
+             
+             sidebarPanel(
+               
+               fluidRow(
+                 column(6,
+                        numericInput(inputId = "mz",
+                                     label = "m/z value:",
+                                     value = 205.0971,
+                                     step = 0.0001)),
+                 
+                 column(4, 
+                        numericInput(inputId = "ppm",
+                                     label = "ppm:",
+                                     value = 10,
+                                     step = 1))
                ),
-      
-      fluidRow(
-        column(6,
-               numericInput(inputId = "mz1",
-                            label = "m/z value",
-                            value = 205.0971)),
-        column(6,
-               numericInput(inputId = "i1",
-                            label = "intensity",
-                            value = 100))
-      ),
-      fluidRow(
-        column(6,
-               numericInput(inputId = "mz2",
-                            label = "",
-                            value = 206.1005)),
-        column(6,
-               numericInput(inputId = "i2",
-                            label = "",
-                            value = 13))
-      ),
-      fluidRow(
-        column(6,
-               numericInput(inputId = "mz3",
-                            label = "",
-                            value = 207.1038)),
-        column(6,
-               numericInput(inputId = "i3",
-                            label = "",
-                            value = 1))
-      )
-      
-    ),
-    
-    # Output ------------------------------------
-    mainPanel(
-      h3("Formulas suggested:"),
-      DT::dataTableOutput("table"),
-      hr(),
-      fluidRow(
-        column(4,
-               h3("Isotopic  pattern:"),
-               textInput("formula", label = "", value = "C11H12N2O2"),
-               plotOutput(outputId = "isopatt")
-        ),
-        column(1),
-        column(2,
-               h3("Adducts:"),
-               fluidRow(verbatimTextOutput("pos")),
-               fluidRow(verbatimTextOutput("neg"))
-        )
-      )
-    )
-  ))
+               
+               radioButtons(
+                 inputId = "adduct", 
+                 label = "Adduct:",
+                 choices = list("[M+H]+" = 1, "[M+K]+" = 2, 
+                                "[M-H]-" = 3, "[M-H+HCOOH]-" = 4), 
+                 selected = 1),
+               
+               hr(),
+               
+               h3("Heuristic rules:"),
+               
+               checkboxInput("H_rule", 
+                             label = "H rule", 
+                             value = TRUE),
+               
+               checkboxInput("H_rule2", 
+                             label = "H rule (II)", 
+                             value = TRUE),
+               
+               checkboxInput("N_rule", 
+                             label = "N rule", 
+                             value = TRUE),
+               
+               checkboxInput("RPU_rule", 
+                             label = "RPU rule", 
+                             value = TRUE),
+               
+               hr(),
+               
+               h3("Experimental rules:"),
+               fluidRow(
+                 column(3,
+                        checkboxInput("iso_1", 
+                                      label = "Isotope 1", 
+                                      value = TRUE)),
+                 column(9,
+                        sliderInput("error1", label = "", min = 0, 
+                                    max = 10, value = 0.4, step = 0.1))
+               ),
+               fluidRow(column(3,
+                               checkboxInput("iso_2", 
+                                             label = "Isotope 2", 
+                                             value = TRUE)),
+                        column(9,
+                               sliderInput(
+                                 "error2", label = "", min = 0, 
+                                 max = 10, value = 2, step = 0.1))
+               ),
+               
+               fluidRow(
+                 column(6,
+                        numericInput(inputId = "mz1",
+                                     label = "m/z value",
+                                     value = 205.0971)),
+                 column(6,
+                        numericInput(inputId = "i1",
+                                     label = "intensity",
+                                     value = 100))
+               ),
+               fluidRow(
+                 column(6,
+                        numericInput(inputId = "mz2",
+                                     label = "",
+                                     value = 206.1005)),
+                 column(6,
+                        numericInput(inputId = "i2",
+                                     label = "",
+                                     value = 13))
+               ),
+               fluidRow(
+                 column(6,
+                        numericInput(inputId = "mz3",
+                                     label = "",
+                                     value = 207.1038)),
+                 column(6,
+                        numericInput(inputId = "i3",
+                                     label = "",
+                                     value = 1))
+               )
+               
+             ),
+             
+             # Output ------------------------------------
+             mainPanel(
+               h3("Formulas suggested:"),
+               DT::dataTableOutput("table"),
+               hr(),
+               fluidRow(
+                 column(6,
+                        h3("Isotopic  pattern:"),
+                        textInput("formula", label = "", 
+                                  value = "C11H12N2O2"),
+                        plotOutput(outputId = "isopatt")
+                 ),
+                 column(1),
+                 column(3,
+                        h3("Adducts:"),
+                        fluidRow(verbatimTextOutput("pos")),
+                        fluidRow(verbatimTextOutput("neg"))
+                 )
+               )
+             ) # close main panel formula finder
+           ) # close sidebar layout
+  ),
+  tabPanel("Adduct calculation",
+           sidebarLayout(
+             
+             sidebarPanel(
+               numericInput(
+                 inputId = "mzX",
+                 label = "m/z value:",
+                 value = 205.0971,
+                 step = 0.0001),
+               radioButtons(
+                 inputId = "adductX", 
+                 label = "Adduct:",
+                 choices = list("[M+H]+" = 1, "[M+K]+" = 2, 
+                                "[M-H]-" = 3, "[M-H+HCOOH]-" = 4), 
+                 selected = 1)
+             ),
+             mainPanel(
+               fluidRow(column(8, verbatimTextOutput("posX"))),
+               fluidRow(column(8, verbatimTextOutput("negX")))
+             ))
+  )
+)
 
 
 
-adducts <- c(1, 2)
-names(adducts) <- c("[M+H]+", "[M-H]-")
+adducts <- seq(4)
+names(adducts) <- c("[M+H]+", "[M+K]+", 
+                    "[M-H]-", "[M-H+HCOOH]-")
 
 
 
 
 server <- function(input, output){
-  
-  
   data <- reactive({
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
@@ -390,7 +419,7 @@ server <- function(input, output){
                                  range = input$error2, isotope = 2)
     myform$rank <- rank_form(
       myform$formula, (input$i2/input$i1)*100, (input$i3/input$i1)*100
-      )
+    )
     
     if(input$H_rule){myform <- myform[myform$H_rule, ]} 
     if(input$H_rule2){myform <- myform[myform$H_rule2, ]} 
@@ -433,7 +462,7 @@ server <- function(input, output){
           c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100), 
           type = "h", lwd = 5, col = "#E31A1C30")
     legend("topright", legend = c("Theoretical", "Experimental"),
-           col = c("#B2DF8A", "#E31A1C"), lty = 1)
+           col = c("#B2DF8A", "#E31A1C"), lty = 1, lwd = 3)
   })
   
   
@@ -442,14 +471,30 @@ server <- function(input, output){
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
                                adduct = c("[M+H]+", "[M+Na]+"))) 
-    })
+  })
   
   output$neg <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
                                adduct = c("[M-H]-", "[M-H+HCOOH]-")))
-    })
+  })
+  
+  output$posX <- renderPrint({ 
+    mzneutral <- getmzneut(input$mzX, 
+                           names(which(adducts == input$adductX)))
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+"))) 
+  })
+  
+  output$negX <- renderPrint({ 
+    mzneutral <- getmzneut(input$mzX, 
+                           names(which(adducts == input$adductX)))
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+  })
+  
+  
 }
 
 
