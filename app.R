@@ -1,4 +1,5 @@
 options(repos = BiocManager::repositories())
+
 library(Rdisop)
 library(MetaboCoreUtils)
 library(shiny)
@@ -361,6 +362,8 @@ ui <- navbarPage(
              ) # close main panel formula finder
            ) # close sidebar layout
   ),
+  
+  # Adduct calculator -----
   tabPanel("Adduct calculation",
            sidebarLayout(
              
@@ -380,8 +383,21 @@ ui <- navbarPage(
              mainPanel(
                fluidRow(column(8, verbatimTextOutput("posX"))),
                fluidRow(column(8, verbatimTextOutput("negX")))
-             ))
+             )),
+           hr(),
+           sidebarLayout(
+             sidebarPanel(
+               textInput("formulaX", label = "Formula:", 
+                         value = "C9H11NO2")
+             ),
+             mainPanel(
+               fluidRow(column(8, verbatimTextOutput("posX2"))),
+               fluidRow(column(8, verbatimTextOutput("negX2")))
+             )
+           )
   ),
+  
+  # Instructions ----
   tabPanel("Instructions",
            h3("Under construction"),
            br(),
@@ -403,7 +419,7 @@ names(adducts) <- c("[M+H]+", "[M+K]+",
 
 
 
-
+# SERVER ------
 server <- function(input, output){
   data <- reactive({
     mzneutral <- getmzneut(input$mz, 
@@ -502,6 +518,18 @@ server <- function(input, output){
   output$negX <- renderPrint({ 
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+  })
+  
+  output$posX2 <- renderPrint({ 
+    mzneutral <- getMolecule(input$formulaX)$exactmass
+    unlist(CompoundDb::mass2mz(mzneutral, 
+                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+"))) 
+  })
+  
+  output$negX2 <- renderPrint({ 
+    mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
                                adduct = c("[M-H]-", "[M-H+HCOOH]-")))
   })
