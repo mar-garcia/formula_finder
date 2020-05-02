@@ -4,6 +4,7 @@ library(MetaboCoreUtils)
 library(shiny)
 library(CompoundDb)
 
+# FUNCTIONS -----------
 getmzneut <- function(
   mz = numeric(0),
   adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", 
@@ -230,7 +231,7 @@ rank_form <- function(formulas = character(0),
 
 
 
-# Shiny server ------------------------------
+# UI ------------------------------
 ui <- navbarPage(
   "",
   
@@ -367,7 +368,7 @@ ui <- navbarPage(
                numericInput(
                  inputId = "mzX",
                  label = "m/z value:",
-                 value = 205.0971,
+                 value = 166.0862,
                  step = 0.0001),
                radioButtons(
                  inputId = "adductX", 
@@ -380,7 +381,18 @@ ui <- navbarPage(
                fluidRow(column(8, verbatimTextOutput("posX"))),
                fluidRow(column(8, verbatimTextOutput("negX")))
              ))
-  )
+  ),
+  tabPanel("Instructions",
+           h3("Under construction"),
+           br(),
+           br(),
+           br(),
+           br(),
+           br(),
+           hr(),
+           p("Inspired by Mass Decomposition tool developed by Jan Stanstrup"),
+           a("http://predret.org/tools/mass-decomposition/")
+           )
 )
 
 
