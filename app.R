@@ -559,7 +559,7 @@ server <- function(input, output){
   })
   
   output$neutral <- renderPrint({ 
-    getMolecule(input$formulaX)$exactmass
+    paste("Monoisotopic mass:", getMolecule(input$formulaX)$exactmass)
   })
   
   output$posX2 <- renderPrint({ 
