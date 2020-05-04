@@ -392,6 +392,7 @@ ui <- navbarPage(
                          value = "C9H11NO2")
              ),
              mainPanel(
+               fluidRow(column(8, verbatimTextOutput("neutral"))),
                fluidRow(column(8, verbatimTextOutput("posX2"))),
                fluidRow(column(8, verbatimTextOutput("negX2")))
              )
@@ -555,6 +556,10 @@ server <- function(input, output){
                            names(which(adducts == input$adductX)))
     unlist(CompoundDb::mass2mz(mzneutral, 
                                adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+  })
+  
+  output$neutral <- renderPrint({ 
+    getMolecule(input$formulaX)$exactmass
   })
   
   output$posX2 <- renderPrint({ 
