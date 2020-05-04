@@ -46,7 +46,7 @@ getform <- function(mzval = numeric(0),
 
 update_form <- function(
   formulas = character(0),
-  adduct = c("[M+H]+", "[M+Na]+", 
+  adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", 
              "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+"),
@@ -54,6 +54,7 @@ update_form <- function(
   addtb <- data.frame(rbind(
     c("[M+H]+", "H"),
     c("[M+Na]+", "Na"),
+    c("[M+K]+", "K"),
     c("[M-H]-", "H"),
     c("[M-H+HCOOH]-", "CH2O2"),
     c("[M+Cl]-", "Cl"),
@@ -481,14 +482,18 @@ server <- function(input, output){
   rownames= FALSE))
   
   output$isopatt <- renderPlot({
-    plot(isopt()[,"X1"],isopt()[,"X3"], 
+    plot(c(input$mz1, input$mz2, input$mz3), 
+         c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100), 
          type = "h", xlab = "m/z value", ylab = "Relative intensity", 
-         col = "#B2DF8A", lwd = 5, ylim = c(0, 100), 
+         col = "#E31A1C", lwd = 1, ylim = c(0, 100), 
          xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, 
                   max(isopt()[3,"X1"], input$mz3) + 0.3))
-    lines(c(input$mz1, input$mz2, input$mz3), 
-          c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100), 
-          type = "h", lwd = 5, col = "#E31A1C30")
+    rect(xleft = isopt()[1,"X1"] - 0.05, xright =isopt()[1,"X1"] + 0.05, 
+         ybottom = 0, ytop = isopt()[1,"X3"], border = "#B2DF8A")
+    rect(xleft = isopt()[2,"X1"] - 0.05, xright =isopt()[2,"X1"] + 0.05, 
+         ybottom = 0, ytop = isopt()[2,"X3"], border = "#B2DF8A")
+    rect(xleft = isopt()[3,"X1"] - 0.05, xright =isopt()[3,"X1"] + 0.05, 
+         ybottom = 0, ytop = isopt()[3,"X3"], border = "#B2DF8A")
     legend("topright", legend = c("Theoretical", "Experimental"),
            col = c("#B2DF8A", "#E31A1C"), lty = 1, lwd = 3)
   })
