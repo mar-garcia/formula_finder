@@ -232,6 +232,81 @@ rank_form <- function(formulas = character(0),
 }
 
 
+HC_rule <- function(formulas = character(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1 <- rbind(tmp.frm1, "CHNOPS")
+  tmp.frm1 <- cbind(
+    tmp.frm1, 
+    do.call(dplyr::bind_rows, 
+            lapply(as.character(tmp.frm1$formula), 
+                   MetaboCoreUtils::countElements)))
+  tmp.frm1[is.na(tmp.frm1)] <- 0
+  tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
+  
+  tmp.frm1$H / tmp.frm1$C
+}
+
+
+NC_rule <- function(formulas = character(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1 <- rbind(tmp.frm1, "CHNOPS")
+  tmp.frm1 <- cbind(
+    tmp.frm1, 
+    do.call(dplyr::bind_rows, 
+            lapply(as.character(tmp.frm1$formula), 
+                   MetaboCoreUtils::countElements)))
+  tmp.frm1[is.na(tmp.frm1)] <- 0
+  tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
+  
+  tmp.frm1$N / tmp.frm1$C
+}
+
+OC_rule <- function(formulas = character(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1 <- rbind(tmp.frm1, "CHNOPS")
+  tmp.frm1 <- cbind(
+    tmp.frm1, 
+    do.call(dplyr::bind_rows, 
+            lapply(as.character(tmp.frm1$formula), 
+                   MetaboCoreUtils::countElements)))
+  tmp.frm1[is.na(tmp.frm1)] <- 0
+  tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
+  
+  tmp.frm1$O / tmp.frm1$C
+}
+
+PC_rule <- function(formulas = character(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1 <- rbind(tmp.frm1, "CHNOPS")
+  tmp.frm1 <- cbind(
+    tmp.frm1, 
+    do.call(dplyr::bind_rows, 
+            lapply(as.character(tmp.frm1$formula), 
+                   MetaboCoreUtils::countElements)))
+  tmp.frm1[is.na(tmp.frm1)] <- 0
+  tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
+  
+  tmp.frm1$P / tmp.frm1$C
+}
+
+SC_rule <- function(formulas = character(0)){
+  tmp.frm1 <- data.frame(formula = formulas)
+  tmp.frm1$formula <- as.character(tmp.frm1$formula)
+  tmp.frm1 <- rbind(tmp.frm1, "CHNOPS")
+  tmp.frm1 <- cbind(
+    tmp.frm1, 
+    do.call(dplyr::bind_rows, 
+            lapply(as.character(tmp.frm1$formula), 
+                   MetaboCoreUtils::countElements)))
+  tmp.frm1[is.na(tmp.frm1)] <- 0
+  tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
+  
+  tmp.frm1$S / tmp.frm1$C
+}
 
 # UI ------------------------------
 ui <- navbarPage(
@@ -338,6 +413,51 @@ ui <- navbarPage(
                checkboxInput("DBE_rule", 
                              label = "DBE rule", 
                              value = TRUE),
+               fluidRow(
+                 column(2,
+                        checkboxInput("HC_ratio", 
+                                      label = "H/C ratio", 
+                                      value = TRUE)),
+                 column(6,
+                        sliderInput("HC_ratio_range", label = "", 
+                                    min = 0, max = 10, value = c(0.2, 5), step = 0.1))
+               ),
+               fluidRow(
+                 column(2,
+                        checkboxInput("NC_ratio", 
+                                      label = "N/C rule", 
+                                      value = TRUE)),
+                 column(6,
+                        sliderInput("NC_ratio_range", label = "", 
+                                    min = 0, max = 10, value = c(0, 3), step = 0.1))
+               ),
+               fluidRow(
+                 column(2,
+                        checkboxInput("OC_ratio", 
+                                      label = "O/C rule", 
+                                      value = TRUE)),
+                 column(6,
+                        sliderInput("OC_ratio_range", label = "", 
+                                    min = 0, max = 10, value = c(0, 5), step = 0.1))
+               ),
+               fluidRow(
+                 column(2,
+                        checkboxInput("PC_ratio", 
+                                      label = "P/C rule", 
+                                      value = TRUE)),
+                 column(6,
+                        sliderInput("PC_ratio_range", label = "", 
+                                    min = 0, max = 10, value = c(0, 1.5), step = 0.1))
+               ),
+               fluidRow(
+                 column(2,
+                        checkboxInput("SC_ratio", 
+                                      label = "S/C ratio", 
+                                      value = TRUE)),
+                 column(6,
+                        sliderInput("SC_ratio_range", label = "", 
+                                    min = 0, max = 10, value = c(0, 3), step = 0.1))
+               ),
                
                ),
              
@@ -426,7 +546,7 @@ ui <- navbarPage(
            code("Double Bond Equivalent (DBE) Rule"),
            ( "is calculated according to the following expression: "),
            em("DBE = (C+Si) - 1/2*(H+Cl+F+I) + 1/2(N+P) + 1"),
-           (". This filter is based on the fact that its answer is a integer value >= 0 (i.e., it can never be negative or a fraction)."),
+           (". This filter is based on the fact that its answer is a positive integer value (i.e., it can never be negative or a fraction)."),
            br(),
            br(),
            strong("Experimental rules"),
@@ -469,34 +589,61 @@ server <- function(input, output){
       decomposeMass(mzneutral, ppm = input$ppm)$exactmass - mzneutral) / 
         decomposeMass(mzneutral, ppm = input$ppm)$exactmass) * 1e6, 1)
     
-    # Rules -----
-    myform$H_rule <- H_rule(myform$formula)
-    myform$H_rule2 <- H_rule2(mzneutral, myform$formula)
-    myform$N_rule <- N_rule(mzneutral, myform$formula)
-    myform$DBE <- DBE_rule(myform$formula)
-    myform$DBE_rule <- (myform$DBE %%1 == 0) & (myform$DBE >= 0) 
     myform$iso_1 <- isotope_rule(myform$formula, 
                                  (input$i2/input$i1)*100, 
                                  range = input$error1, isotope = 1)
     myform$iso_2 <- isotope_rule(myform$formula, 
                                  (input$i3/input$i1)*100, 
                                  range = input$error2, isotope = 2)
+    myform$H_rule <- H_rule(myform$formula)
+    myform$H_rule2 <- H_rule2(mzneutral, myform$formula)
+    myform$N_rule <- N_rule(mzneutral, myform$formula)
+    myform$DBE <- DBE_rule(myform$formula)
+    myform$DBE_rule <- (myform$DBE %%1 == 0) & (myform$DBE >= 0) 
+    
+    myform$HC <- round(HC_rule(myform$formula), 1)
+    myform$HC_ratio <- (myform$HC >= input$HC_ratio_range[1]) &
+      (myform$HC < input$HC_ratio_range[2])
+    myform$NC <- round(NC_rule(myform$formula), 1)
+    myform$NC_ratio <- (myform$NC >= input$NC_ratio_range[1]) &
+      (myform$NC <= input$NC_ratio_range[2])
+    myform$OC <- round(OC_rule(myform$formula), 1)
+    myform$OC_ratio <- (myform$OC >= input$OC_ratio_range[1]) &
+      (myform$OC <= input$OC_ratio_range[2])
+    myform$PC <- round(PC_rule(myform$formula), 1)
+    myform$PC_ratio <- (myform$PC >= input$PC_ratio_range[1]) &
+      (myform$PC <= input$PC_ratio_range[2])
+    myform$SC <- round(SC_rule(myform$formula), 1)
+    myform$SC_ratio <- (myform$SC >= input$SC_ratio_range[1]) &
+      (myform$SC <= input$SC_ratio_range[2])
+    
     myform$rank <- rank_form(
       myform$formula, (input$i2/input$i1)*100, (input$i3/input$i1)*100
     )
     
+    if(input$iso_1){myform <- myform[myform$iso_1, ]} 
+    if(input$iso_2){myform <- myform[myform$iso_2, ]} 
     if(input$H_rule){myform <- myform[myform$H_rule, ]} 
     if(input$H_rule2){myform <- myform[myform$H_rule2, ]} 
     if(input$N_rule){myform <- myform[myform$N_rule, ]} 
     if(input$DBE_rule){myform <- myform[myform$DBE_rule, ]} 
-    if(input$iso_1){myform <- myform[myform$iso_1, ]} 
-    if(input$iso_2){myform <- myform[myform$iso_2, ]} 
-    
-    colnames(myform) <- c("Formula", "ppm", "H rule", "H rule (II)", 
-                          "N rule", "DBE", "DBE rule", "Isotope 1", "Isotope 2",
+    if(input$HC_ratio){myform <- myform[myform$HC_ratio, ]} 
+    if(input$NC_ratio){myform <- myform[myform$NC_ratio, ]} 
+    if(input$OC_ratio){myform <- myform[myform$OC_ratio, ]} 
+    if(input$PC_ratio){myform <- myform[myform$PC_ratio, ]} 
+    if(input$SC_ratio){myform <- myform[myform$SC_ratio, ]} 
+        
+    colnames(myform) <- c("Formula", "ppm", "Isotope 1", "Isotope 2", 
+                          "H rule", "H rule (II)", 
+                          "N rule", "DBE", "DBE rule", 
+                          "H/C", "H/C ratio", "N/C", "N/C ratio", 
+                          "O/C", "O/C ratio", "P/C", "P/C ratio",
+                          "S/C", "S/C ratio",
                           "Rank")
     myform
   })
+  
+  
   
   isopt <- reactive({
     formneutral <- update_form(input$formula, 
