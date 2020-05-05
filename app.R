@@ -308,6 +308,14 @@ SC_rule <- function(formulas = character(0)){
   tmp.frm1$S / tmp.frm1$C
 }
 
+mycolnames <- c("Formula", "ppm", "Isotope 1", "Isotope 2", 
+                "H rule", "H rule (II)", 
+                "N rule", "DBE", "DBE rule", 
+                "H/C", "H/C ratio", "N/C", "N/C ratio", 
+                "O/C", "O/C ratio", "P/C", "P/C ratio",
+                "S/C", "S/C ratio",
+                "Rank")
+
 # UI ------------------------------
 ui <- navbarPage(
   "",
@@ -362,6 +370,7 @@ ui <- navbarPage(
                                  "error2", label = "", min = 0, 
                                  max = 10, value = 2, step = 0.1))
                ),
+               helpText("The sliders allows to fix an specific 'error' (%) when filtering for one or both isotopes."),
                
                fluidRow(
                  column(6,
@@ -414,7 +423,7 @@ ui <- navbarPage(
                              label = "DBE rule", 
                              value = TRUE),
                fluidRow(
-                 column(2,
+                 column(3,
                         checkboxInput("HC_ratio", 
                                       label = "H/C ratio", 
                                       value = TRUE)),
@@ -423,34 +432,34 @@ ui <- navbarPage(
                                     min = 0, max = 10, value = c(0.2, 5), step = 0.1))
                ),
                fluidRow(
-                 column(2,
+                 column(3,
                         checkboxInput("NC_ratio", 
-                                      label = "N/C rule", 
+                                      label = "N/C ratio", 
                                       value = TRUE)),
                  column(6,
                         sliderInput("NC_ratio_range", label = "", 
                                     min = 0, max = 10, value = c(0, 3), step = 0.1))
                ),
                fluidRow(
-                 column(2,
+                 column(3,
                         checkboxInput("OC_ratio", 
-                                      label = "O/C rule", 
+                                      label = "O/C ratio", 
                                       value = TRUE)),
                  column(6,
                         sliderInput("OC_ratio_range", label = "", 
                                     min = 0, max = 10, value = c(0, 5), step = 0.1))
                ),
                fluidRow(
-                 column(2,
+                 column(3,
                         checkboxInput("PC_ratio", 
-                                      label = "P/C rule", 
+                                      label = "P/C ratio", 
                                       value = TRUE)),
                  column(6,
                         sliderInput("PC_ratio_range", label = "", 
                                     min = 0, max = 10, value = c(0, 1.5), step = 0.1))
                ),
                fluidRow(
-                 column(2,
+                 column(3,
                         checkboxInput("SC_ratio", 
                                       label = "S/C ratio", 
                                       value = TRUE)),
@@ -459,7 +468,7 @@ ui <- navbarPage(
                                     min = 0, max = 10, value = c(0, 3), step = 0.1))
                ),
                
-               ),
+             ),
              
              # Output ------------------------------------
              mainPanel(
@@ -479,6 +488,16 @@ ui <- navbarPage(
                         fluidRow(verbatimTextOutput("pos")),
                         fluidRow(verbatimTextOutput("neg"))
                  )
+               ),
+               hr(),
+               fluidRow(
+                 checkboxGroupInput(
+                   "show_vars", "Columns to show in the table:", mycolnames, 
+                   selected = c("Formula", "ppm", "Isotope 1", "Isotope 2", 
+                                "H rule", "H rule (II)", "N rule", 
+                                "DBE", "H/C", "N/C", "O/C", "P/C", "S/C", 
+                                "Rank"), 
+                   inline = TRUE)
                )
              ) # close main panel formula finder
            ) # close sidebar layout
@@ -526,6 +545,10 @@ ui <- navbarPage(
            br(),
            h3("Formula Finder"),
            p("This tool has been developed to help during the process of identifying features derived from HRMS experiments. The idea is to use this tool once we have a more or less clear hypothesis about what the assignment of a certain m/z value is. So, we will write its m/z value at the top-left of the screen and also indicate which adduct we think it refers to. Considering the deviation in ppm indicated in the corresponding box, the tool will calculate the possible formulas to which the m/z value we are interrogating may correspond (using the R 'Rdisop' package). These formulas are included in the table on the right. This table can be filtered (by checking the corresponding boxes) by different analytical chemistry criteria. Following there is the description of these rules."),
+           br(),
+           strong("Experimental rules"),
+           p("Here we use the isotopic pattern to evaluate how our 'experimental' isotopic pattern (indicated in the left part of the page) fits with the 'theoretical' isotopic pattern of a given formula (indicated just above the plot). The main adducts of this 'theoretical' formula are printed on the right side of the plot. The sliders allows to fix an 'error' window when filtering for one or both isotopes."),
+           br(),
            strong("Heuristic rules"),
            br(),
            ("The "), 
@@ -548,9 +571,13 @@ ui <- navbarPage(
            em("DBE = (C+Si) - 1/2*(H+Cl+F+I) + 1/2(N+P) + 1"),
            (". This filter is based on the fact that its answer is a positive integer value (i.e., it can never be negative or a fraction)."),
            br(),
+           ("There is also the possibility to restrict formulas according to their"),
+           code("element ratios"),
+           ("."),
            br(),
-           strong("Experimental rules"),
-           p("Here we use the isotopic pattern to evaluate how our 'experimental' isotopic pattern (indicated in the bottom-left part of the page) fits with the 'theoretical' isotopic pattern of a given formula (indicated just above the plot). The main adducts of this 'theoretical' formula are printed on the right side of the plot. The sliders allows to fix an 'error' window when filtering for one or both isotopes."),
+           ("Formulas are "),
+           code("ranked"),
+           (" according the absolute mean deviation in the relative intensity of both isotopes."),
            br(),
            h3("Adduct calculation"),
            p("The idea of the tool provided in the upper part of this page is that you can calculate the m/z values for different adducts given an specific m/z value and its assignation."),
@@ -560,7 +587,7 @@ ui <- navbarPage(
            br(),
            p("This shiny app has been inspired by the Mass Decomposition tool developed by Jan Stanstrup"),
            a("http://predret.org/tools/mass-decomposition/")
-           )
+  )
 )
 
 
@@ -632,15 +659,9 @@ server <- function(input, output){
     if(input$OC_ratio){myform <- myform[myform$OC_ratio, ]} 
     if(input$PC_ratio){myform <- myform[myform$PC_ratio, ]} 
     if(input$SC_ratio){myform <- myform[myform$SC_ratio, ]} 
-        
-    colnames(myform) <- c("Formula", "ppm", "Isotope 1", "Isotope 2", 
-                          "H rule", "H rule (II)", 
-                          "N rule", "DBE", "DBE rule", 
-                          "H/C", "H/C ratio", "N/C", "N/C ratio", 
-                          "O/C", "O/C ratio", "P/C", "P/C ratio",
-                          "S/C", "S/C ratio",
-                          "Rank")
-    myform
+    
+    colnames(myform) <- mycolnames
+    myform[, input$show_vars]
   })
   
   
