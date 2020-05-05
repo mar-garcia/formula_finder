@@ -191,7 +191,7 @@ RPU_rule <- function(formulas = character(0)){
       ((tmp.frm1$H + tmp.frm1$Cl + tmp.frm1$Fl + tmp.frm1$I)/2) + 
       ((tmp.frm1$N + tmp.frm1$P)/2) + 
       1
-  )  >= 0
+  ) # >= 0
 }
 
 isotope_rule <- function(formulas = character(0),
@@ -268,26 +268,6 @@ ui <- navbarPage(
                
                hr(),
                
-               h3("Heuristic rules:"),
-               
-               checkboxInput("H_rule", 
-                             label = "H rule", 
-                             value = TRUE),
-               
-               checkboxInput("H_rule2", 
-                             label = "H rule (II)", 
-                             value = TRUE),
-               
-               checkboxInput("N_rule", 
-                             label = "N rule", 
-                             value = TRUE),
-               
-               checkboxInput("RPU_rule", 
-                             label = "RPU rule", 
-                             value = TRUE),
-               
-               hr(),
-               
                h3("Experimental rules:"),
                fluidRow(
                  column(3,
@@ -316,7 +296,7 @@ ui <- navbarPage(
                  column(6,
                         numericInput(inputId = "i1",
                                      label = "intensity",
-                                     value = 100))
+                                     value = 4854167))
                ),
                fluidRow(
                  column(6,
@@ -326,7 +306,7 @@ ui <- navbarPage(
                  column(6,
                         numericInput(inputId = "i2",
                                      label = "",
-                                     value = 13))
+                                     value = 631041))
                ),
                fluidRow(
                  column(6,
@@ -336,10 +316,30 @@ ui <- navbarPage(
                  column(6,
                         numericInput(inputId = "i3",
                                      label = "",
-                                     value = 1))
-               )
+                                     value = 48542))
+               ),
                
-             ),
+               hr(),
+               
+               h3("Heuristic rules:"),
+               
+               checkboxInput("H_rule", 
+                             label = "H rule", 
+                             value = TRUE),
+               
+               checkboxInput("H_rule2", 
+                             label = "H rule (II)", 
+                             value = TRUE),
+               
+               checkboxInput("N_rule", 
+                             label = "N rule", 
+                             value = TRUE),
+               
+               checkboxInput("RPU_rule", 
+                             label = "RPU rule", 
+                             value = TRUE),
+               
+               ),
              
              # Output ------------------------------------
              mainPanel(
@@ -453,6 +453,9 @@ names(adducts) <- c("[M+H]+", "[M+K]+",
 
 # SERVER ------
 server <- function(input, output){
+  
+  # reactive ----------
+  
   data <- reactive({
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
@@ -470,7 +473,8 @@ server <- function(input, output){
     myform$H_rule <- H_rule(myform$formula)
     myform$H_rule2 <- H_rule2(mzneutral, myform$formula)
     myform$N_rule <- N_rule(mzneutral, myform$formula)
-    myform$RPU_rule <- RPU_rule(myform$formula)
+    myform$RPU <- RPU_rule(myform$formula)
+    myform$RPU_rule <- (myform$RPU %%1 == 0) & (myform$RPU >= 0) 
     myform$iso_1 <- isotope_rule(myform$formula, 
                                  (input$i2/input$i1)*100, 
                                  range = input$error1, isotope = 1)
@@ -489,7 +493,7 @@ server <- function(input, output){
     if(input$iso_2){myform <- myform[myform$iso_2, ]} 
     
     colnames(myform) <- c("Formula", "ppm", "H rule", "H rule (II)", 
-                          "N rule", "RPU rule", "Isotope 1", "Isotope 2",
+                          "N rule", "RPU", "RPU rule", "Isotope 1", "Isotope 2",
                           "Rank")
     myform
   })
@@ -516,9 +520,10 @@ server <- function(input, output){
     plot(c(input$mz1, input$mz2, input$mz3), 
          c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100), 
          type = "h", xlab = "m/z value", ylab = "Relative intensity", 
-         col = "#E31A1C", lwd = 1, ylim = c(0, 100), 
+         col = "#E31A1C", lwd = 1, xaxt = 'n', ylim = c(0, 100), 
          xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, 
                   max(isopt()[3,"X1"], input$mz3) + 0.3))
+    axis(1, at = isopt()[,"X1"], labels = round(isopt()[,"X1"], 4))
     rect(xleft = isopt()[1,"X1"] - 0.05, xright =isopt()[1,"X1"] + 0.05, 
          ybottom = 0, ytop = isopt()[1,"X3"], border = "#B2DF8A")
     rect(xleft = isopt()[2,"X1"] - 0.05, xright =isopt()[2,"X1"] + 0.05, 
