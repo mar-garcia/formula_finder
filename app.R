@@ -370,7 +370,7 @@ ui <- navbarPage(
                                  "error2", label = "", min = 0, 
                                  max = 10, value = 2, step = 0.1))
                ),
-               helpText("The sliders allows to fix an specific 'error' (%) when filtering for one or both isotopes."),
+               helpText("The sliders allows to fix an specific 'error' window when filtering for one or both isotopes."),
                
                fluidRow(
                  column(6,
@@ -644,10 +644,6 @@ server <- function(input, output){
     myform$SC_ratio <- (myform$SC >= input$SC_ratio_range[1]) &
       (myform$SC <= input$SC_ratio_range[2])
     
-    myform$rank <- rank_form(
-      myform$formula, (input$i2/input$i1)*100, (input$i3/input$i1)*100
-    )
-    
     if(input$iso_1){myform <- myform[myform$iso_1, ]} 
     if(input$iso_2){myform <- myform[myform$iso_2, ]} 
     if(input$H_rule){myform <- myform[myform$H_rule, ]} 
@@ -659,6 +655,10 @@ server <- function(input, output){
     if(input$OC_ratio){myform <- myform[myform$OC_ratio, ]} 
     if(input$PC_ratio){myform <- myform[myform$PC_ratio, ]} 
     if(input$SC_ratio){myform <- myform[myform$SC_ratio, ]} 
+    
+    myform$rank <- rank_form(
+      myform$formula, (input$i2/input$i1)*100, (input$i3/input$i1)*100
+    )
     
     colnames(myform) <- mycolnames
     myform[, input$show_vars]
