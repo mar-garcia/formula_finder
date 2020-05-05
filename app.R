@@ -173,7 +173,7 @@ N_rule <- function(mzval = numeric(0),
 }
 
 
-RPU_rule <- function(formulas = character(0)){
+DBE_rule <- function(formulas = character(0)){
   tmp.frm1 <- data.frame(formula = formulas)
   tmp.frm1$formula <- as.character(tmp.frm1$formula)
   tmp.frm1 <- rbind(tmp.frm1, "CHNOPSSiClFlI")
@@ -185,7 +185,7 @@ RPU_rule <- function(formulas = character(0)){
   tmp.frm1[is.na(tmp.frm1)] <- 0
   tmp.frm1 <- tmp.frm1[-nrow(tmp.frm1),]
   
-  # RPU <- (C+Si) - (H+Cl+Fl+I)/2 + (N+P)/2 + 1
+  # DBE <- (C+Si) - (H+Cl+Fl+I)/2 + (N+P)/2 + 1
   (
     (tmp.frm1$C + tmp.frm1$Si) - 
       ((tmp.frm1$H + tmp.frm1$Cl + tmp.frm1$Fl + tmp.frm1$I)/2) + 
@@ -335,8 +335,8 @@ ui <- navbarPage(
                              label = "N rule", 
                              value = TRUE),
                
-               checkboxInput("RPU_rule", 
-                             label = "RPU rule", 
+               checkboxInput("DBE_rule", 
+                             label = "DBE rule", 
                              value = TRUE),
                
                ),
@@ -423,9 +423,9 @@ ui <- navbarPage(
            (" states that a compound with an odd molecular weight have an odd number of nitrogen's and compounds with an even molecular weight will have either no nitrogen or an even number of nitrogen atoms."),
            br(),
            ("The number of "),
-           code("Rings and Unsaturations Rule"),
+           code("Double Bond Equivalent (DBE) Rule"),
            ( "is calculated according to the following expression: "),
-           em("RPU = (C+Si) - 1/2*(H+Cl+F+I) + 1/2(N+P) + 1"),
+           em("DBE = (C+Si) - 1/2*(H+Cl+F+I) + 1/2(N+P) + 1"),
            (". This filter is based on the fact that its answer is a integer value >= 0 (i.e., it can never be negative or a fraction)."),
            br(),
            br(),
@@ -473,8 +473,8 @@ server <- function(input, output){
     myform$H_rule <- H_rule(myform$formula)
     myform$H_rule2 <- H_rule2(mzneutral, myform$formula)
     myform$N_rule <- N_rule(mzneutral, myform$formula)
-    myform$RPU <- RPU_rule(myform$formula)
-    myform$RPU_rule <- (myform$RPU %%1 == 0) & (myform$RPU >= 0) 
+    myform$DBE <- DBE_rule(myform$formula)
+    myform$DBE_rule <- (myform$DBE %%1 == 0) & (myform$DBE >= 0) 
     myform$iso_1 <- isotope_rule(myform$formula, 
                                  (input$i2/input$i1)*100, 
                                  range = input$error1, isotope = 1)
@@ -488,12 +488,12 @@ server <- function(input, output){
     if(input$H_rule){myform <- myform[myform$H_rule, ]} 
     if(input$H_rule2){myform <- myform[myform$H_rule2, ]} 
     if(input$N_rule){myform <- myform[myform$N_rule, ]} 
-    if(input$RPU_rule){myform <- myform[myform$RPU_rule, ]} 
+    if(input$DBE_rule){myform <- myform[myform$DBE_rule, ]} 
     if(input$iso_1){myform <- myform[myform$iso_1, ]} 
     if(input$iso_2){myform <- myform[myform$iso_2, ]} 
     
     colnames(myform) <- c("Formula", "ppm", "H rule", "H rule (II)", 
-                          "N rule", "RPU", "RPU rule", "Isotope 1", "Isotope 2",
+                          "N rule", "DBE", "DBE rule", "Isotope 1", "Isotope 2",
                           "Rank")
     myform
   })
