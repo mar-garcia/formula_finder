@@ -4,6 +4,7 @@ library(Rdisop)
 library(MetaboCoreUtils)
 library(shiny)
 library(CompoundDb)
+library(MsCoreUtils)
 
 # FUNCTIONS -----------
 getmzneut <- function(
@@ -329,25 +330,24 @@ ui <- navbarPage(
              sidebarPanel(
                
                fluidRow(
-                 column(6,
+                 column(3,
                         numericInput(inputId = "mz",
                                      label = "m/z value:",
                                      value = 205.0971,
                                      step = 0.0001)),
                  
-                 column(4, 
+                 column(3, 
                         numericInput(inputId = "ppm",
                                      label = "ppm:",
                                      value = 10,
-                                     step = 1))
-               ),
-               
-               radioButtons(
-                 inputId = "adduct", 
-                 label = "Adduct:",
-                 choices = list("[M+H]+" = 1, "[M+K]+" = 2, 
-                                "[M-H]-" = 3, "[M-H+HCOOH]-" = 4), 
-                 selected = 1),
+                                     step = 1)),
+                 column(4,
+                        selectInput(
+                          inputId = "adduct", 
+                          label = "Adduct:",
+                          choices = list("[M+H]+" = 1, "[M+Na]+" = 2, "[M+K]+" = 3, 
+                                         "[M-H]-" = 4, "[M+Cl]-" = 5, "[M-H+HCOOH]-" = 6), 
+                          selected = 1))),
                
                hr(),
                
@@ -516,8 +516,8 @@ ui <- navbarPage(
                radioButtons(
                  inputId = "adductX", 
                  label = "Adduct:",
-                 choices = list("[M+H]+" = 1, "[M+K]+" = 2, 
-                                "[M-H]-" = 3, "[M-H+HCOOH]-" = 4), 
+                 choices = list("[M+H]+" = 1, "[M+Na]+" = 2, "[M+K]+" = 3, 
+                                "[M-H]-" = 4, "[M+Cl]-" = 5, "[M-H+HCOOH]-" = 6), 
                  selected = 1)
              ),
              mainPanel(
@@ -592,9 +592,9 @@ ui <- navbarPage(
 
 
 
-adducts <- seq(4)
-names(adducts) <- c("[M+H]+", "[M+K]+", 
-                    "[M-H]-", "[M-H+HCOOH]-")
+adducts <- seq(6)
+names(adducts) <- c("[M+H]+", "[M+Na]+", "[M+K]+", 
+                    "[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")
 
 
 
@@ -691,13 +691,21 @@ server <- function(input, output){
          col = "#E31A1C", lwd = 1, xaxt = 'n', ylim = c(0, 100), 
          xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, 
                   max(isopt()[3,"X1"], input$mz3) + 0.3))
-    axis(1, at = isopt()[,"X1"], labels = round(isopt()[,"X1"], 4))
-    rect(xleft = isopt()[1,"X1"] - 0.05, xright =isopt()[1,"X1"] + 0.05, 
-         ybottom = 0, ytop = isopt()[1,"X3"], border = "#B2DF8A")
-    rect(xleft = isopt()[2,"X1"] - 0.05, xright =isopt()[2,"X1"] + 0.05, 
-         ybottom = 0, ytop = isopt()[2,"X3"], border = "#B2DF8A")
-    rect(xleft = isopt()[3,"X1"] - 0.05, xright =isopt()[3,"X1"] + 0.05, 
-         ybottom = 0, ytop = isopt()[3,"X3"], border = "#B2DF8A")
+    axis(1, at = isopt()[,"X1"], 
+         labels = c(paste0(round(isopt()[1,"X1"],4), " (", 
+                           round((abs(isopt()[1,"X1"] - input$mz1)/isopt()[1,"X1"])*1e6, 1), " ppm)"),
+                    paste0(round(isopt()[2,"X1"],4), " (", 
+                           round((abs(isopt()[2,"X1"] - input$mz2)/isopt()[2,"X1"])*1e6, 1), " ppm)"),
+                    paste0(round(isopt()[3,"X1"],4), " (", 
+                           round((abs(isopt()[3,"X1"] - input$mz3)/isopt()[3,"X1"])*1e6, 1), " ppm)")
+         ))
+    rect(xleft = isopt()[,"X1"] - (ppm(isopt()[,"X1"], 100)), 
+         xright =isopt()[,"X1"] + (ppm(isopt()[,"X1"], 100)), 
+         ybottom = 0, ytop = isopt()[,"X3"], border = "#B2DF8A")
+    #rect(xleft = isopt()[2,"X1"] - 0.05, xright =isopt()[2,"X1"] + 0.05, 
+     #    ybottom = 0, ytop = isopt()[2,"X3"], border = "#B2DF8A")
+    #rect(xleft = isopt()[3,"X1"] - 0.05, xright =isopt()[3,"X1"] + 0.05, 
+     #    ybottom = 0, ytop = isopt()[3,"X3"], border = "#B2DF8A")
     legend("topright", legend = c("Theoretical", "Experimental"),
            col = c("#B2DF8A", "#E31A1C"), lty = 1, lwd = 3)
   })
@@ -714,7 +722,7 @@ server <- function(input, output){
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
   })
   
   output$posX <- renderPrint({ 
@@ -728,7 +736,7 @@ server <- function(input, output){
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
   })
   
   output$neutral <- renderPrint({ 
@@ -744,7 +752,7 @@ server <- function(input, output){
   output$negX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
   })
   
   
