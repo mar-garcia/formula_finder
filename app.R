@@ -535,6 +535,28 @@ ui <- navbarPage(
                fluidRow(column(8, verbatimTextOutput("posX2"))),
                fluidRow(column(8, verbatimTextOutput("negX2")))
              )
+           ),
+           hr(),
+           sidebarLayout(
+             sidebarPanel(
+               numericInput(
+                 inputId = "mzX1",
+                 label = "m/z value 1:",
+                 value = 166.0862,
+                 step = 0.0001),
+               numericInput(
+                 inputId = "mzX2",
+                 label = "m/z value 2:",
+                 value = 120.0807,
+                 step = 0.0001),
+               numericInput(inputId = "ppmX",
+                            label = "ppm:",
+                            value = 10,
+                            step = 1)
+               ),
+             mainPanel(
+               fluidRow(column(8, verbatimTextOutput("adductZ")))
+             )
            )
   ),
   
@@ -774,6 +796,22 @@ server <- function(input, output){
     mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
                                adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
+  })
+  
+  output$adductZ <- renderPrint({ 
+    tmp <- unlist(CompoundDb::mass2mz(-1.007276, adduct = adducts()))
+    paste0(names(unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+                                     abs(tmp), ppm = input$ppmX))),
+           ": ",
+           round((abs(
+             abs(input$mzX1 - input$mzX2) - 
+               abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+                                           abs(tmp), ppm = input$ppmX))])) / 
+               abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+                                           abs(tmp), ppm = input$ppmX))])
+             )*1e6,1),
+           " ppm"
+    )
   })
   
   
