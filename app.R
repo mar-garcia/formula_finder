@@ -736,7 +736,7 @@ server <- function(input, output){
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
+                               adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$neg <- renderPrint({ 
@@ -750,7 +750,7 @@ server <- function(input, output){
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
+                               adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX <- renderPrint({ 
@@ -767,7 +767,7 @@ server <- function(input, output){
   output$posX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
+                               adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX2 <- renderPrint({ 
