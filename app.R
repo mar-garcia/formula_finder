@@ -483,7 +483,7 @@ ui <- navbarPage(
                         plotOutput(outputId = "isopatt")
                  ),
                  column(1),
-                 column(3,
+                 column(4,
                         h3("Adducts:"),
                         fluidRow(verbatimTextOutput("pos")),
                         fluidRow(verbatimTextOutput("neg"))
@@ -715,28 +715,28 @@ server <- function(input, output){
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+"))) 
+                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$neg <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
   })
   
   output$posX <- renderPrint({ 
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+"))) 
+                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX <- renderPrint({ 
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
   })
   
   output$neutral <- renderPrint({ 
@@ -746,13 +746,13 @@ server <- function(input, output){
   output$posX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+"))) 
+                               adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
     unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")))
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
   })
   
   
