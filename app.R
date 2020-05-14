@@ -9,12 +9,13 @@ library(MsCoreUtils)
 # FUNCTIONS -----------
 getmzneut <- function(
   mz = numeric(0),
-  adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", 
+  adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
              "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+")){
   addtb <- rbind(
     c("[M+H]+", 1.007276),
+    c("[M+NH4]+", 18.034374142),
     c("[M+Na]+", 22.98980),
     c("[M+K]+", 38.96371),
     c("[M-H]-", -1.007276),
@@ -47,13 +48,14 @@ getform <- function(mzval = numeric(0),
 
 update_form <- function(
   formulas = character(0),
-  adduct = c("[M+H]+", "[M+Na]+", "[M+K]+", 
+  adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
              "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+"),
   action = c("add", "remove")){
   addtb <- data.frame(rbind(
     c("[M+H]+", "H"),
+    c("[M+NH4]+", "NH4"),
     c("[M+Na]+", "Na"),
     c("[M+K]+", "K"),
     c("[M-H]-", "H"),
@@ -345,8 +347,8 @@ ui <- navbarPage(
                         selectInput(
                           inputId = "adduct", 
                           label = "Adduct:",
-                          choices = list("[M+H]+" = 1, "[M+Na]+" = 2, "[M+K]+" = 3, 
-                                         "[M-H]-" = 4, "[M+Cl]-" = 5, "[M-H+HCOOH]-" = 6), 
+                          choices = list("[M+H]+" = 1, "[M+NH4]+" = 2, "[M+Na]+" = 3, "[M+K]+" = 4, 
+                                         "[M-H]-" = 5, "[M+Cl]-" = 6, "[M-H+HCOOH]-" = 7), 
                           selected = 1))),
                
                hr(),
@@ -635,8 +637,8 @@ ui <- navbarPage(
 
 
 
-adducts <- seq(6)
-names(adducts) <- c("[M+H]+", "[M+Na]+", "[M+K]+", 
+adducts <- seq(7)
+names(adducts) <- c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
                     "[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")
 
 
@@ -799,7 +801,15 @@ server <- function(input, output){
   })
   
   output$adductZ <- renderPrint({ 
-    tmp <- unlist(CompoundDb::mass2mz(-1.007276, adduct = adducts()))
+    tmp <- unlist(CompoundDb::mass2mz(+1.007276, 
+                                      adduct = adducts(polarity = -1)))
+    tmp <- tmp[tmp>0]
+    tmp <- c(tmp, 
+             unlist(CompoundDb::mass2mz(-1.007276, 
+                                        adduct = adducts(polarity = 1))))
+    tmp2 <- 97.977011765
+    names(tmp2) <- "[M-H+H2CCOOHK]-"
+    tmp <- c(tmp, tmp2)
     paste0(names(unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
                                      abs(tmp), ppm = input$ppmX))),
            ": ",
