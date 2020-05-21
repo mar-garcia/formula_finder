@@ -541,20 +541,32 @@ ui <- navbarPage(
            hr(),
            sidebarLayout(
              sidebarPanel(
-               numericInput(
-                 inputId = "mzX1",
-                 label = "m/z value 1:",
-                 value = 166.0862,
-                 step = 0.0001),
-               numericInput(
-                 inputId = "mzX2",
-                 label = "m/z value 2:",
-                 value = 120.0807,
-                 step = 0.0001),
-               numericInput(inputId = "ppmX",
-                            label = "ppm:",
-                            value = 10,
-                            step = 1)
+               fluidRow(
+                 column(4,
+                        numericInput(
+                          inputId = "mzX1",
+                          label = "m/z value 1:",
+                          value = 166.0862,
+                          step = 0.0001)),
+                 column(4,
+                        numericInput(
+                          inputId = "mzX2",
+                          label = "m/z value 2:",
+                          value = 120.0807,
+                          step = 0.0001))
+               ),
+               fluidRow(
+                 column(4,
+                        radioButtons("polX", label = "Polarity:",
+                                     choices = list("POS" = 1, "NEG" = -1), 
+                                     selected = 1)),
+                 column(4,
+                        numericInput(inputId = "ppmX",
+                                     label = "ppm:",
+                                     value = 10,
+                                     step = 1))
+               ),
+         
                ),
              mainPanel(
                fluidRow(column(8, verbatimTextOutput("adductZ")))
@@ -801,27 +813,30 @@ server <- function(input, output){
   })
   
   output$adductZ <- renderPrint({ 
-    tmp <- unlist(CompoundDb::mass2mz(+1.007276, 
-                                      adduct = adducts(polarity = -1)))
-    tmp <- tmp[tmp>0]
-    tmp <- c(tmp, 
-             unlist(CompoundDb::mass2mz(-1.007276, 
-                                        adduct = adducts(polarity = 1))))
-    tmp2 <- 97.977011765
-    names(tmp2) <- "[M-H+H2CCOOHK]-"
-    tmp <- c(tmp, tmp2)
-    paste0(names(unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
-                                     abs(tmp), ppm = input$ppmX))),
-           ": ",
-           round((abs(
-             abs(input$mzX1 - input$mzX2) - 
-               abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
-                                           abs(tmp), ppm = input$ppmX))])) / 
-               abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
-                                           abs(tmp), ppm = input$ppmX))])
-             )*1e6,1),
-           " ppm"
-    )
+    #tmp <- unlist(CompoundDb::mass2mz(+1.007276, 
+    #                                  adduct = adducts(polarity = -1)))
+    #tmp <- tmp[tmp>0]
+    #tmp <- c(tmp, 
+    #         unlist(CompoundDb::mass2mz(-1.007276, 
+    #                                    adduct = adducts(polarity = 1))))
+    #tmp2 <- 97.977011765
+    #names(tmp2) <- "[M-H+H2CCOOHK]-"
+    #tmp <- c(tmp, tmp2)
+    mz <- unname(input$mzX1 - unlist(CompoundDb::mass2mz(0, adduct = adducts(polarity = input$polX)))[1] )
+    tmp <- unlist(CompoundDb::mass2mz(mz, adduct = adducts(polarity = input$polX)))
+    names(unlist(matchWithPpm(input$mzX2, tmp, ppm = input$ppmX)))
+    #paste0(names(unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+    #                                 abs(tmp), ppm = input$ppmX))),
+     #      ": ",
+      #     round((abs(
+       #      abs(input$mzX1 - input$mzX2) - 
+        #       abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+         #                                  abs(tmp), ppm = input$ppmX))])) / 
+          #     abs(tmp[unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
+          #                                 abs(tmp), ppm = input$ppmX))])
+           #  )*1e6,1),
+           #" ppm"
+    #)
   })
   
   
