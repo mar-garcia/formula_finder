@@ -571,6 +571,27 @@ ui <- navbarPage(
              mainPanel(
                fluidRow(column(8, verbatimTextOutput("adductZ")))
              )
+           ),
+           hr(),
+           sidebarLayout(
+             sidebarPanel(
+               fluidRow(
+                 column(4,
+                        numericInput(
+                          inputId = "mzY1",
+                          label = "therotical m/z:",
+                          value = 166.0862,
+                          step = 0.0001)),
+                 column(4,
+                        numericInput(
+                          inputId = "mzY2",
+                          label = "experimental m/z value:",
+                          value = 166.0872,
+                          step = 0.0001))
+             )),
+             mainPanel(
+               fluidRow(column(4, verbatimTextOutput("ppmY")))
+             )
            )
   ),
   
@@ -838,6 +859,11 @@ server <- function(input, output){
            #" ppm"
     #)
   })
+  
+  output$ppmY <- renderPrint({
+    paste(sprintf("%.2f", round(((input$mzY2 - input$mzY1)/input$mzY1)*1000000, 
+                                2)), "ppm")
+    })
   
   
 }
