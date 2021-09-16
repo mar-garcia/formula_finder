@@ -468,7 +468,7 @@ ui <- navbarPage(
                  column(6,
                         sliderInput("SC_ratio_range", label = "", 
                                     min = 0, max = 10, value = c(0, 3), step = 0.1))
-               ),
+               )
                
              ),
              
@@ -565,9 +565,9 @@ ui <- navbarPage(
                                      label = "ppm:",
                                      value = 10,
                                      step = 1))
-               ),
+               )
          
-               ),
+             ),
              mainPanel(
                fluidRow(column(8, verbatimTextOutput("adductZ")))
              )
