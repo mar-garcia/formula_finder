@@ -6,11 +6,20 @@ library(shiny)
 library(CompoundDb)
 library(MsCoreUtils)
 
+.ppm <- function(x, ppm = 10) {
+  ppm * x / 1e6
+}
+matchWithPpm <- function(x, y, ppm = 0) {
+  lapply(x, function(z, ppm) {
+    which(abs(z - y) <= (.ppm(z, ppm)) + 1e-9)
+  }, ppm = force(ppm))
+}
+
 # FUNCTIONS -----------
 getmzneut <- function(
   mz = numeric(0),
   adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
-             "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
+             "[M-H]-", "[M+CHO2]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+")){
   addtb <- rbind(
@@ -19,7 +28,7 @@ getmzneut <- function(
     c("[M+Na]+", 22.98980),
     c("[M+K]+", 38.96371),
     c("[M-H]-", -1.007276),
-    c("[M-H+HCOOH]-", 44.99820),
+    c("[M+CHO2]-", 44.99820),
     c("[M+Cl]-", 34.96885),
     c("[M-H+HCOONa]-", 66.98017),
     c("[2M+H]+", 1.007276),
@@ -49,7 +58,7 @@ getform <- function(mzval = numeric(0),
 update_form <- function(
   formulas = character(0),
   adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
-             "[M-H]-", "[M-H+HCOOH]-", "[M+Cl]-", "[M-H+HCOONa]-",
+             "[M-H]-", "[M+CHO2]-", "[M+Cl]-", "[M-H+HCOONa]-",
              "[2M-H]-", "[2M+H]+",
              "[M+H-H2O]+"),
   action = c("add", "remove")){
@@ -59,7 +68,7 @@ update_form <- function(
     c("[M+Na]+", "Na"),
     c("[M+K]+", "K"),
     c("[M-H]-", "H"),
-    c("[M-H+HCOOH]-", "CH2O2"),
+    c("[M+CHO2]-", "CH2O2"),
     c("[M+Cl]-", "Cl"),
     c("[M-H+HCOONa]-", "CHO2Na"),
     c("[2M+H]+", "H"),
@@ -348,7 +357,7 @@ ui <- navbarPage(
                           inputId = "adduct", 
                           label = "Adduct:",
                           choices = list("[M+H]+" = 1, "[M+NH4]+" = 2, "[M+Na]+" = 3, "[M+K]+" = 4, 
-                                         "[M-H]-" = 5, "[M+Cl]-" = 6, "[M-H+HCOOH]-" = 7), 
+                                         "[M-H]-" = 5, "[M+Cl]-" = 6, "[M+CHO2]-" = 7), 
                           selected = 1))),
                
                hr(),
@@ -519,7 +528,7 @@ ui <- navbarPage(
                  inputId = "adductX", 
                  label = "Adduct:",
                  choices = list("[M+H]+" = 1, "[M+Na]+" = 2, "[M+K]+" = 3, 
-                                "[M-H]-" = 4, "[M+Cl]-" = 5, "[M-H+HCOOH]-" = 6), 
+                                "[M-H]-" = 4, "[M+Cl]-" = 5, "[M+CHO2]-" = 6), 
                  selected = 1)
              ),
              mainPanel(
@@ -558,7 +567,7 @@ ui <- navbarPage(
                fluidRow(
                  column(4,
                         radioButtons("polX", label = "Polarity:",
-                                     choices = list("POS" = 1, "NEG" = -1), 
+                                     choices = list("POS" = "positive", "NEG" = "negative"), 
                                      selected = 1)),
                  column(4,
                         numericInput(inputId = "ppmX",
@@ -672,7 +681,7 @@ ui <- navbarPage(
 
 adducts <- seq(7)
 names(adducts) <- c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", 
-                    "[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-")
+                    "[M-H]-", "[M+Cl]-", "[M+CHO2]-")
 
 
 
@@ -792,29 +801,29 @@ server <- function(input, output){
   output$pos <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
-    unlist(CompoundDb::mass2mz(mzneutral, 
+    unlist(mass2mz(mzneutral, 
                                adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$neg <- renderPrint({ 
     mzneutral <- getmzneut(input$mz, 
                            names(which(adducts == input$adduct)))
-    unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
+    unlist(mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-")))
   })
   
   output$posX <- renderPrint({ 
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
-    unlist(CompoundDb::mass2mz(mzneutral, 
+    unlist(mass2mz(mzneutral, 
                                adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX <- renderPrint({ 
     mzneutral <- getmzneut(input$mzX, 
                            names(which(adducts == input$adductX)))
-    unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
+    unlist(mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-")))
   })
   
   output$neutral <- renderPrint({ 
@@ -823,28 +832,28 @@ server <- function(input, output){
   
   output$posX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
-    unlist(CompoundDb::mass2mz(mzneutral, 
+    unlist(mass2mz(mzneutral, 
                                adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
   })
   
   output$negX2 <- renderPrint({ 
     mzneutral <- getMolecule(input$formulaX)$exactmass
-    unlist(CompoundDb::mass2mz(mzneutral, 
-                               adduct = c("[M-H]-", "[M+Cl]-", "[M-H+HCOOH]-", "[2M-H]-")))
+    unlist(mass2mz(mzneutral, 
+                               adduct = c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-")))
   })
   
   output$adductZ <- renderPrint({ 
-    #tmp <- unlist(CompoundDb::mass2mz(+1.007276, 
+    #tmp <- unlist(mass2mz(+1.007276, 
     #                                  adduct = adducts(polarity = -1)))
     #tmp <- tmp[tmp>0]
     #tmp <- c(tmp, 
-    #         unlist(CompoundDb::mass2mz(-1.007276, 
+    #         unlist(mass2mz(-1.007276, 
     #                                    adduct = adducts(polarity = 1))))
     #tmp2 <- 97.977011765
     #names(tmp2) <- "[M-H+H2CCOOHK]-"
     #tmp <- c(tmp, tmp2)
-    mz <- unname(input$mzX1 - unlist(CompoundDb::mass2mz(0, adduct = adducts(polarity = input$polX)))[1] )
-    tmp <- unlist(CompoundDb::mass2mz(mz, adduct = adducts(polarity = input$polX)))
+    mz <- unname(input$mzX1 - unlist(mass2mz(0, adduct = adducts(polarity = input$polX)))[1] )
+    tmp <- unlist(mass2mz(mz, adduct = adducts(polarity = input$polX)))
     names(unlist(matchWithPpm(input$mzX2, tmp, ppm = input$ppmX)))
     #paste0(names(unlist(matchWithPpm(abs(input$mzX1 - input$mzX2), 
     #                                 abs(tmp), ppm = input$ppmX))),
