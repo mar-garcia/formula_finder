@@ -7,7 +7,7 @@ library(MetaboCoreUtils)
 ui <- navbarPage(
   "",
   tabPanel(
-    "",
+    "Main",
     sidebarLayout(
       sidebarPanel(
         textInput("formula", label = "Formula:", 
@@ -37,8 +37,102 @@ ui <- navbarPage(
     )),
     mainPanel(
       fluidRow(column(4, verbatimTextOutput("ppm")))
-    ))
-    ))
+    )),
+    hr(),
+    sidebarLayout(
+      sidebarPanel(
+        fluidRow(column(4,
+               numericInput(
+                 inputId = "mzt",
+                 label = "theoretical m/z:",
+                 value = 166.0862,
+                 step = 0.0001
+               )),
+        column(3,
+               numericInput(
+                 inputId = "ppmdev",
+                 label = "ppm Deviations",
+                 value = 5,
+                 step = 0.1
+               )))
+      ),
+      mainPanel(
+        fluidRow(column(4, verbatimTextOutput("mzrange")))
+      )
+    )
+    ), # close tabPanel 1
+  # Instructions ----
+  tabPanel("Instructions",
+           p("This shiny app contain 2 main tools: 'Formula Finder' and 'Adduct calculation'."),
+           p("If you have any question and/or any suggestion to improve this shiny app, please write me at mar.garcia@eurac.edu. Your feedback will be very appreciated! :)"),
+           br(),
+           h3("Formula Finder"),
+           ("This tool has been developed to help during the process of identifying features derived from HRMS experiments. The idea is to use this tool once we have a more or less clear hypothesis about what is the assignment for a certain "),
+           em("m/z"), ("value. So, we will write its "),
+           em("m/z"), ("value at the top-left of the screen and also indicate which adduct we think it refers to. Considering the deviation in ppm indicated in the corresponding box, the tool will calculate the possible formulas to which the "), 
+           em("m/z"), (" value we are interrogating may correspond (using the R 'Rdisop' package). These formulas are included in the table on the right. This table can be filtered (by checking the corresponding boxes) by different analytical chemistry criteria. Following there is the description of these rules."),
+           br(),
+           br(),
+           strong("Experimental rules"),
+           p("Here we use the isotopic pattern to evaluate how our 'experimental' isotopic pattern (indicated on the left part of the page) fits with the 'theoretical' isotopic pattern of a given formula (indicated just above the plot). The main adducts of this 'theoretical' formula are printed on the right side of the plot. The sliders allow to fix an 'error' window when filtering for one or both isotopes."),
+           br(),
+           strong("Heuristic rules"),
+           br(),
+           ("The "), 
+           code("Hydrogen Rule"),
+           (" determines the maximum number of hydrogens that a formula can contain according to the following calculation:"),
+           em("Max(H) = 2C + N + 2"),
+           (". Note that this rule is never applied for formulas which contain phosphorus."),
+           br(),
+           ("The "),
+           code("Refined Hydrogen Rule"),
+           (" is based on the fact that the sum of the nominal mass plus the number of H-atoms is divisible by four."),
+           br(),
+           ("The "),
+           code("Nitrogen Rule"),
+           (" states that a compound with an odd molecular weight have an odd number of nitrogen's and compounds with an even molecular weight will have either no nitrogen or an even number of nitrogen atoms."),
+           br(),
+           ("The number of "),
+           code("Double Bond Equivalent (DBE) Rule"),
+           ( "is calculated according to the following expression: "),
+           em("DBE = (C+Si) - 1/2*(H+Cl+F+I) + 1/2(N+P) + 1"),
+           (". This filter is based on the fact that its answer is a positive integer value (i.e., it can never be negative or a fraction)."),
+           br(),
+           ("There is also the possibility to restrict formulas according to their"),
+           code("element ratios"),
+           (". Default ratios are set in a way that all compounds described at the HMDB fill the criteria."),
+           br(),
+           ("Formulas are "),
+           code("ranked"),
+           (" according the absolute mean deviation in the relative intensity of both isotopes."),
+           br(),
+           br(),
+           h3("Adduct calculation"),
+           ("The idea of the tool provided in the upper part of this page is that you can calculate the "), em("m/z"), 
+           (" values for different adducts given an specific "), em("m/z"), ("value and its assignation."), br(),
+           ("In the lower part of the page you can get the "), em("m/z"), 
+           ("values for different adducts given an specific formula."),
+           br(),
+           br(),
+           h3("References"),
+           ("CHROMacademy. "),
+           strong("LC-MS Interpretation:"),
+           a("https://www.chromacademy.com/channels/lc-ms/technique/lc-ms-interpretation/"),
+           br(),
+           ("Kind T, Fiehn O. "),
+           strong("Seven Golden Rules for heuristic filtering of molecular formulas obtained by accurate mass spectrometry. "), 
+           em("BMC Bioinformatics,"), (" 2007;8:105."),
+           br(),
+           ("Claesen J, Valkenborg D, Burzykowski T. "),
+           strong("'Refined Hydrogen Rule' and a 'Refined Hydrogen and Halogen Rule' for Organic Molecules. "),
+           em("J Am Soc Mass Spectrom,"), (" 2020;31(1):132-6."),
+           br(),
+           hr(),
+           br(),
+           ("This shiny app has been inspired by the Mass Decomposition tool developed by Jan Stanstrup: "),
+           a("http://predret.org/tools/mass-decomposition/")
+  )# close tabPanel Instructions
+  )
 server <- function(input, output){
   
   output$neutral <- renderPrint({ 
@@ -58,8 +152,13 @@ server <- function(input, output){
   })
   
   output$ppm <- renderPrint({
-    paste(sprintf("%.2f", round(((input$ppme - input$ppmt)/input$ppmt)*1000000, 
-                                2)), "ppm")
+    paste(sprintf("%.2f", ((input$ppme - input$ppmt)/input$ppmt)*1000000), 
+          "ppm")
+  })
+  
+  output$mzrange <- renderPrint({
+    paste(sprintf("%.5f", input$mzt - (input$ppmdev*input$mzt)/1e6), "-", 
+          sprintf("%.5f", input$mzt + (input$ppmdev*input$mzt)/1e6))
   })
 }
 
