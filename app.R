@@ -3,6 +3,11 @@ options(repos = BiocManager::repositories())
 
 library(shiny)
 library(MetaboCoreUtils)
+library(Rdisop)
+
+ppm <- function(x, ppm = 10) {
+  ppm * x / 1e6
+}
 
 ui <- navbarPage(
   "",
@@ -34,33 +39,89 @@ ui <- navbarPage(
                    label = "experimental m/z value:",
                    value = 166.0872,
                    step = 0.0001))
-    )),
-    mainPanel(
-      fluidRow(column(4, verbatimTextOutput("ppm")))
-    )),
+        )),
+      mainPanel(
+        fluidRow(column(4, verbatimTextOutput("ppm")))
+      )),
     hr(),
     sidebarLayout(
       sidebarPanel(
         fluidRow(column(4,
-               numericInput(
-                 inputId = "mzt",
-                 label = "theoretical m/z:",
-                 value = 166.0862,
-                 step = 0.0001
-               )),
-        column(3,
-               numericInput(
-                 inputId = "ppmdev",
-                 label = "ppm Deviations",
-                 value = 5,
-                 step = 0.1
-               )))
+                        numericInput(
+                          inputId = "mzt",
+                          label = "theoretical m/z:",
+                          value = 166.0862,
+                          step = 0.0001
+                        )),
+                 column(3,
+                        numericInput(
+                          inputId = "ppmdev",
+                          label = "ppm Deviations",
+                          value = 5,
+                          step = 0.1
+                        )))
       ),
       mainPanel(
         fluidRow(column(4, verbatimTextOutput("mzrange")))
       )
     )
-    ), # close tabPanel 1
+  ), # close tabPanel Main
+  # Formula finder ----
+  tabPanel(
+    "Formula Finder",
+    sidebarLayout(
+      sidebarPanel(
+        fluidRow(
+          column(3,
+                 numericInput(inputId = "mz1",
+                              label = "m/z value",
+                              value = 205.0971)),
+          column(3,
+                 numericInput(inputId = "i1",
+                              label = "intensity",
+                              value = 4854167))
+        ),
+        fluidRow(
+          column(3,
+                 numericInput(inputId = "mz2",
+                              label = "",
+                              value = 206.1005)),
+          column(3,
+                 numericInput(inputId = "i2",
+                              label = "",
+                              value = 631041))
+        ),
+        fluidRow(
+          column(3,
+                 numericInput(inputId = "mz3",
+                              label = "",
+                              value = 207.1038)),
+          column(3,
+                 numericInput(inputId = "i3",
+                              label = "",
+                              value = 48542))
+        ),
+        
+        hr(),
+        fluidRow(
+          column(4,
+                 radioButtons("p", label = "Polarity:",
+                              choices = list("POS" = "POS", "NEG" = "NEG"), 
+                              selected = "POS"))
+        )
+      ),
+      mainPanel(
+        h3("Formulas suggested:"),
+        DT::dataTableOutput("table"),
+        hr(),
+        fluidRow(
+          column(6,
+                 h3("Isotopic  pattern:"),
+                 textInput("form", label = "", 
+                           value = "C11H12N2O2"),
+                 plotOutput(outputId = "isopatt")
+          ))
+      ))), # close tabPanel Formula Finer
   # Instructions ----
   tabPanel("Instructions",
            p("This shiny app contain 2 main tools: 'Formula Finder' and 'Adduct calculation'."),
@@ -132,7 +193,7 @@ ui <- navbarPage(
            ("This shiny app has been inspired by the Mass Decomposition tool developed by Jan Stanstrup: "),
            a("http://predret.org/tools/mass-decomposition/")
   )# close tabPanel Instructions
-  )
+)
 server <- function(input, output){
   
   output$neutral <- renderPrint({ 
@@ -160,6 +221,109 @@ server <- function(input, output){
     paste(sprintf("%.5f", input$mzt - (input$ppmdev*input$mzt)/1e6), "-", 
           sprintf("%.5f", input$mzt + (input$ppmdev*input$mzt)/1e6))
   })
+  
+  
+  # Formula Finder -----
+  
+  fml <- reactive({
+    ip <- data.frame(rbind(c(input$mz1,	input$i1),	
+                           c(input$mz2,	input$i2),
+                           c(input$mz3,	input$i3)
+    ))
+    colnames(ip) <- c("mz", "i")
+    fn <- 100/ip$i[1] # normalization factor
+    ip$i <- ip$i*fn # normalize intensities
+    ip$d_mz <- ip$mz - ip$mz[1] # calculate deltas in m/z values
+    # deduce to which element correspond each isotope:
+    ip$E <- NA
+    ip$E[which(abs(1.003355 - ip$d_mz) < 0.001)] <- "C"
+    ip$E[which(abs(2.0043 - ip$d_mz) < 0.001)] <- "O"
+    
+    # get the isotope corresponding to 13C:
+    idx <- which(ip$E == "C")
+    nc <- ip$i[idx] / 1.1 # calculate the number of C
+    nc <- seq(round(nc - nc/10), round(nc + nc/10)) # number of C +- 10% error
+    # get the nominal mass of the main ion:
+    if(input$p == "POS"){
+      ms <- round(input$mz1) - 1
+    }else if(input$p == "NEG"){
+      ms <- round(input$mz1) + 1
+    }
+    
+    
+    # get all potential combinations of elements C-O-N:
+    fml <- data.frame(
+      C = rep(nc, each = 21*6),
+      O = rep(seq(0, 20), length(nc), each = 6),
+      N = rep(seq(0, 5), length(nc)*21)
+    )# calculate the number of H considering the nominal mass:
+    fml$H <- ms - fml$C*12 - fml$O*16 - fml$N*14
+    # check the different rules:
+    fml$H_rule <- fml$H < (2*fml$C + fml$N + 2) # 2C + N + 2
+    fml$N_rule <- fml$N %% 2 == round(ms) %% 2
+    fml$DBE <- fml$C - fml$H/2 + fml$N/2 + 1 # (C+Si) - ?(H+cl+Fl+I) + ?(N+P) + 1
+    
+    # keep the formulas fullfiling the rules:
+    fml <- fml[fml$H > 0 & fml$H_rule == T & fml$DBE > 0 & (fml$DBE %% 1) == 0, ]
+    # get the complete formula:
+    fml$formula <- paste0("C", fml$C, "H", fml$H, "N", fml$N, "O", fml$O)
+    fml$formula <- gsub("N0", "", fml$formula)
+    fml$formula <- gsub("N1O", "NO", fml$formula)
+    # calculate the theoretical m/z value of the main ion:
+    if(input$p == "POS"){
+      fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), "[M+H]+"))
+    }else if(input$p == "NEG"){
+      fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), "[M-H]-"))
+    }
+    # calculate the deviations in ppm:
+    fml$ppm <- round((abs(fml$mz - ip$mz[1]) / fml$mz)*1e6, 4)
+    fml <- fml[order(fml$ppm), ]
+    fml
+  })
+  
+  output$table <- DT::renderDataTable(DT::datatable({
+    fml()
+  },
+  options = list(pageLength = 5, dom = "tip" ),
+  rownames= FALSE))
+  
+  isopt <- reactive({
+    if(input$p == "POS"){
+      t_fml <- addElements(input$form, "H")
+    }else if(input$p == "NEG"){
+      t_fml <- subtractElements(input$form, "H")
+    }
+    
+    dt <- data.frame(t(getIsotope(getMolecule(t_fml))[,1:3]))
+    dt$X3 <- (dt$X2/max(dt$X2))*100
+    dt
+  })
+  
+  output$isopatt <- renderPlot({
+    plot(c(input$mz1, input$mz2, input$mz3),
+         c(100, (input$i2/input$i1)*100, (input$i3/input$i1)*100),
+         type = "h", xlab = "m/z value", ylab = "Relative intensity", 
+         col = 2, lwd = 2, xaxt = 'n', 
+         xlim = c(min(isopt()[1,"X1"], input$mz1) - 0.3, 
+                  max(isopt()[3,"X1"], input$mz3) + 0.3)
+    )
+    axis(1, at = isopt()[,"X1"], 
+         labels = c(
+           paste0(round(isopt()[1,"X1"],4), " (", 
+                  round((abs(isopt()[1,"X1"] - input$mz1)/isopt()[1,"X1"])*1e6, 1), " ppm)"),
+           paste0(round(isopt()[2,"X1"],4), " (", 
+                  round((abs(isopt()[2,"X1"] - input$mz2)/isopt()[2,"X1"])*1e6, 1), " ppm)"),
+           paste0(round(isopt()[3,"X1"],4), " (", 
+                  round((abs(isopt()[3,"X1"] - input$mz3)/isopt()[3,"X1"])*1e6, 1), " ppm)")
+         ))
+    rect(xleft = isopt()[,"X1"] - (ppm(isopt()[,"X1"], 100)), 
+         xright =isopt()[,"X1"] + (ppm(isopt()[,"X1"], 100)), 
+         ybottom = 0, ytop = isopt()[,"X3"], border = 3)
+    legend("topright", legend = c("Theoretical", "Experimental"),
+           col = c("#B2DF8A", "#E31A1C"), lty = 1, lwd = 3)
+    
+  })
+  
 }
 
 shinyApp(ui = ui, server = server)
