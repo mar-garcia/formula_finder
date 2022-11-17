@@ -36,7 +36,7 @@ ui <- navbarPage(
           column(4,
                  numericInput(
                    inputId = "ppme",
-                   label = "experimental m/z value:",
+                   label = "experimental m/z:",
                    value = 166.0872,
                    step = 0.0001))
         )),
@@ -56,13 +56,14 @@ ui <- navbarPage(
                  column(3,
                         numericInput(
                           inputId = "ppmdev",
-                          label = "ppm Deviations",
+                          label = "ppm deviations",
                           value = 5,
                           step = 0.1
                         )))
       ),
       mainPanel(
-        fluidRow(column(4, verbatimTextOutput("mzrange")))
+        fluidRow(column(4, verbatimTextOutput("mzrange"))),
+        fluidRow(column(4, verbatimTextOutput("mzdif")))
       )
     )
   ), # close tabPanel Main
@@ -220,6 +221,11 @@ server <- function(input, output){
   output$mzrange <- renderPrint({
     paste(sprintf("%.5f", input$mzt - (input$ppmdev*input$mzt)/1e6), "-", 
           sprintf("%.5f", input$mzt + (input$ppmdev*input$mzt)/1e6))
+  })
+  
+  output$mzdif <- renderPrint({
+    sprintf("%.6f", (input$mzt + (input$ppmdev*input$mzt)/1e6) - 
+              (input$mzt - (input$ppmdev*input$mzt)/1e6))
   })
   
   
