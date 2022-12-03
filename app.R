@@ -259,13 +259,14 @@ server <- function(input, output){
     }
     
     
-    # get all potential combinations of elements C-O-N:
+    # get all potential combinations of elements C-O-N-S:
     fml <- data.frame(
-      C = rep(nc, each = 21*6),
-      O = rep(seq(0, 20), length(nc), each = 6),
-      N = rep(seq(0, 5), length(nc)*21)
+      C = rep(nc, each = 21*6*3),
+      O = rep(seq(0, 20), length(nc), each = 6*3),
+      N = rep(rep(seq(0, 5), each = 3), length(nc)*21),
+      S = rep(seq(0, 2), length(nc)*21*6)
     )# calculate the number of H considering the nominal mass:
-    fml$H <- ms - fml$C*12 - fml$O*16 - fml$N*14
+    fml$H <- ms - fml$C*12 - fml$O*16 - fml$N*14 - fml$S*32
     # check the different rules:
     fml$H_rule <- fml$H < (2*fml$C + fml$N + 2) # 2C + N + 2
     fml$N_rule <- fml$N %% 2 == round(ms) %% 2
@@ -274,9 +275,12 @@ server <- function(input, output){
     # keep the formulas fullfiling the rules:
     fml <- fml[fml$H > 0 & fml$H_rule == T & fml$DBE > 0 & (fml$DBE %% 1) == 0, ]
     # get the complete formula:
-    fml$formula <- paste0("C", fml$C, "H", fml$H, "N", fml$N, "O", fml$O)
+    fml$formula <- paste0("C", fml$C, "H", fml$H, "N", fml$N, "O", fml$O, 
+                          "S", fml$S)
     fml$formula <- gsub("N0", "", fml$formula)
     fml$formula <- gsub("N1O", "NO", fml$formula)
+    fml$formula <- gsub("S0", "", fml$formula)
+    fml$formula <- gsub("S1", "S", fml$formula)
     # calculate the theoretical m/z value of the main ion:
     if(input$p == "POS"){
       fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), "[M+H]+"))
