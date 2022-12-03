@@ -53,10 +53,10 @@ ui <- navbarPage(
                           value = 166.0862,
                           step = 0.0001
                         )),
-                 column(3,
+                 column(4,
                         numericInput(
                           inputId = "ppmdev",
-                          label = "ppm deviations",
+                          label = "ppm deviations:",
                           value = 5,
                           step = 0.1
                         )))
@@ -219,13 +219,15 @@ server <- function(input, output){
   })
   
   output$mzrange <- renderPrint({
-    paste(sprintf("%.5f", input$mzt - (input$ppmdev*input$mzt)/1e6), "-", 
+    paste("m/z range:", 
+          sprintf("%.5f", input$mzt - (input$ppmdev*input$mzt)/1e6), "-", 
           sprintf("%.5f", input$mzt + (input$ppmdev*input$mzt)/1e6))
   })
   
   output$mzdif <- renderPrint({
-    sprintf("%.6f", (input$mzt + (input$ppmdev*input$mzt)/1e6) - 
-              (input$mzt - (input$ppmdev*input$mzt)/1e6))
+    paste("m/z difference:",
+      sprintf("%.6f", (input$mzt + (input$ppmdev*input$mzt)/1e6) - 
+              (input$mzt - (input$ppmdev*input$mzt)/1e6)), "Da")
   })
   
   
