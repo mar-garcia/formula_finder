@@ -126,7 +126,7 @@ ui <- navbarPage(
   # Instructions ----
   tabPanel("Instructions",
            p("This shiny app contain 2 main tools: 'Formula Finder' and 'Adduct calculation'."),
-           p("If you have any question and/or any suggestion to improve this shiny app, please write me at mar.garcia@eurac.edu. Your feedback will be very appreciated! :)"),
+           p("If you have any question and/or any suggestion to improve this shiny app, please write me at mar.garcia@fmach.it. Your feedback will be very appreciated! :)"),
            br(),
            h3("Formula Finder"),
            ("This tool has been developed to help during the process of identifying features derived from HRMS experiments. The idea is to use this tool once we have a more or less clear hypothesis about what is the assignment for a certain "),
@@ -268,15 +268,17 @@ server <- function(input, output){
     )# calculate the number of H considering the nominal mass:
     fml$H <- ms - fml$C*12 - fml$O*16 - fml$N*14 - fml$S*32
     # check the different rules:
-    fml$H_rule <- fml$H < (2*fml$C + fml$N + 2) # 2C + N + 2
+    fml$H_rule <- fml$H <= (2*fml$C + fml$N + 2) # 2C + N + 2
     fml$N_rule <- fml$N %% 2 == round(ms) %% 2
     fml$DBE <- fml$C - fml$H/2 + fml$N/2 + 1 # (C+Si) - ?(H+cl+Fl+I) + ?(N+P) + 1
     
     # keep the formulas fullfiling the rules:
-    fml <- fml[fml$H > 0 & fml$H_rule == T & fml$DBE > 0 & (fml$DBE %% 1) == 0, ]
+    fml <- fml[fml$H > 0 & fml$H_rule == T & fml$DBE >= 0 & (fml$DBE %% 1) == 0, ]
     # get the complete formula:
     fml$formula <- paste0("C", fml$C, "H", fml$H, "N", fml$N, "O", fml$O, 
                           "S", fml$S)
+    fml$formula <- gsub("O0", "", fml$formula)
+    fml$formula <- gsub("O1", "O", fml$formula)
     fml$formula <- gsub("N0", "", fml$formula)
     fml$formula <- gsub("N1O", "NO", fml$formula)
     fml$formula <- gsub("S0", "", fml$formula)
