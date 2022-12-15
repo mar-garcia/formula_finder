@@ -108,7 +108,11 @@ ui <- navbarPage(
           column(4,
                  radioButtons("p", label = "Polarity:",
                               choices = list("POS" = "POS", "NEG" = "NEG"), 
-                              selected = "POS"))
+                              selected = "POS")),
+          column(5, radioButtons("adduct", label = "Adduct:",
+                                 choices = list("[M+H]+" = "[M+H]+", 
+                                                "[M-H]-" = "[M-H]-"), 
+                                 selected = "[M+H]+"))
         )
       ),
       mainPanel(
@@ -226,8 +230,8 @@ server <- function(input, output){
   
   output$mzdif <- renderPrint({
     paste("m/z difference:",
-      sprintf("%.6f", (input$mzt + (input$ppmdev*input$mzt)/1e6) - 
-              (input$mzt - (input$ppmdev*input$mzt)/1e6)), "Da")
+          sprintf("%.6f", (input$mzt + (input$ppmdev*input$mzt)/1e6) - 
+                    (input$mzt - (input$ppmdev*input$mzt)/1e6)), "Da")
   })
   
   
@@ -252,43 +256,38 @@ server <- function(input, output){
     nc <- ip$i[idx] / 1.1 # calculate the number of C
     nc <- seq(round(nc - nc/10), round(nc + nc/10)) # number of C +- 10% error
     # get the nominal mass of the main ion:
-    if(input$p == "POS"){
-      ms <- round(input$mz1) - 1
-    }else if(input$p == "NEG"){
-      ms <- round(input$mz1) + 1
-    }
-    
+    ms <- as.numeric(mz2mass(input$mz1, input$adduct))
     
     # get all potential combinations of elements C-O-N-S:
     fml <- data.frame(
-      C = rep(nc, each = 21*6*3),
-      O = rep(seq(0, 20), length(nc), each = 6*3),
-      N = rep(rep(seq(0, 5), each = 3), length(nc)*21),
-      S = rep(seq(0, 2), length(nc)*21*6)
+      C = rep(nc, each = 21*6*3*3),
+      O = rep(seq(0, 20), length(nc), each = 6*3*3),
+      N = rep(rep(seq(0, 5), each = 3*3), length(nc)*21),
+      S = rep(rep(seq(0, 2), each = 3), length(nc)*21*6),
+      P = rep(seq(0, 2), length(nc)*21*6*3)
     )# calculate the number of H considering the nominal mass:
-    fml$H <- ms - fml$C*12 - fml$O*16 - fml$N*14 - fml$S*32
+    fml$H <- floor(ms) - (fml$C*12 + fml$O*16 + fml$N*14 + fml$S*32 + fml$P*31)
     # check the different rules:
     fml$H_rule <- fml$H <= (2*fml$C + fml$N + 2) # 2C + N + 2
-    fml$N_rule <- fml$N %% 2 == round(ms) %% 2
-    fml$DBE <- fml$C - fml$H/2 + fml$N/2 + 1 # (C+Si) - ?(H+cl+Fl+I) + ?(N+P) + 1
+    fml$N_rule <- fml$N %% 2 == floor(ms) %% 2
+    fml$DBE <- fml$C - fml$H/2 + (fml$N + fml$P)/2 + 1 # (C+Si) - ?(H+cl+Fl+I) + ?(N+P) + 1
     
     # keep the formulas fullfiling the rules:
-    fml <- fml[fml$H > 0 & fml$H_rule == T & fml$DBE >= 0 & (fml$DBE %% 1) == 0, ]
+    fml <- fml[fml$H > 0 & fml$H_rule == T & fml$N_rule == T & fml$DBE >= 0 & (fml$DBE %% 1) == 0, ]
     # get the complete formula:
     fml$formula <- paste0("C", fml$C, "H", fml$H, "N", fml$N, "O", fml$O, 
-                          "S", fml$S)
+                          "S", fml$S, "P", fml$P)
     fml$formula <- gsub("O0", "", fml$formula)
-    fml$formula <- gsub("O1", "O", fml$formula)
+    idx <- which(fml$O == 1)
+    fml$formula[idx] <- gsub("O1", "O", fml$formula[idx])
     fml$formula <- gsub("N0", "", fml$formula)
     fml$formula <- gsub("N1O", "NO", fml$formula)
     fml$formula <- gsub("S0", "", fml$formula)
     fml$formula <- gsub("S1", "S", fml$formula)
+    fml$formula <- gsub("P0", "", fml$formula)
+    fml$formula <- gsub("P1", "P", fml$formula)
     # calculate the theoretical m/z value of the main ion:
-    if(input$p == "POS"){
-      fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), "[M+H]+"))
-    }else if(input$p == "NEG"){
-      fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), "[M-H]-"))
-    }
+    fml$mz <- as.numeric(mass2mz(calculateMass(fml$formula), input$adduct))
     # calculate the deviations in ppm:
     fml$ppm <- round((abs(fml$mz - ip$mz[1]) / fml$mz)*1e6, 4)
     fml <- fml[order(fml$ppm), ]
