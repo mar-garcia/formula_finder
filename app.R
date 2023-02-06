@@ -113,6 +113,10 @@ ui <- navbarPage(
                                  choices = list("[M+H]+" = "[M+H]+", 
                                                 "[M-H]-" = "[M-H]-"), 
                                  selected = "[M+H]+"))
+        ),
+        hr(),
+        fluidRow(
+          sliderInput("error_C", "% Error in C", min = 0, max = 100, value = 10)
         )
       ),
       mainPanel(
@@ -254,7 +258,8 @@ server <- function(input, output){
     # get the isotope corresponding to 13C:
     idx <- which(ip$E == "C")
     nc <- ip$i[idx] / 1.1 # calculate the number of C
-    nc <- seq(round(nc - nc/10), round(nc + nc/10)) # number of C +- 10% error
+    # number of C +- 10% error:
+    nc <- seq(round(nc - nc*input$error_C/100), round(nc + nc*input$error_C/100)) 
     # get the nominal mass of the main ion:
     ms <- as.numeric(mz2mass(input$mz1, input$adduct))
     
