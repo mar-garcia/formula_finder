@@ -9,6 +9,17 @@ ppm <- function(x, ppm = 10) {
   ppm * x / 1e6
 }
 
+adds <- rbind(
+  adducts("positive"),
+  adducts("negative"),
+  "[2M+Na-2H]-" = c("[2M+Na-2H]-", 2, calculateMass("Na") - calculateMass("H")*2, "H", "H", -1, FALSE)
+)
+adds$mass_multi <- as.numeric(adds$mass_multi)
+adds$mass_add <- as.numeric(adds$mass_add)
+adds$charge <- as.numeric(adds$charge)
+adds$positive <- as.logical(adds$positive)
+
+
 ui <- navbarPage(
   "",
   tabPanel(
@@ -212,13 +223,13 @@ server <- function(input, output){
   output$pos <- renderPrint({ 
     mzneutral <- calculateMass(input$formula)
     unlist(mass2mz(mzneutral, 
-                   adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+"))) 
+                   adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+", "[2M+Na]+"))) 
   })
   
   output$neg <- renderPrint({ 
     mzneutral <- calculateMass(input$formula)
     unlist(mass2mz(mzneutral, 
-                   adduct = c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-")))
+                   adds[c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-", "[2M+Na-2H]-"),]))
   })
   
   output$ppm <- renderPrint({
