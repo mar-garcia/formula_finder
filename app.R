@@ -11,8 +11,11 @@ ppm <- function(x, ppm = 10) {
 
 adds <- rbind(
   adducts("positive"),
+  "[M+CH2O2Na]-" = c("[M+CH2O2Na]-", 1, calculateMass("CH2O2Na"), "H", "H", 1, TRUE),
   adducts("negative"),
-  "[2M+Na-2H]-" = c("[2M+Na-2H]-", 2, calculateMass("Na") - calculateMass("H")*2, "H", "H", -1, FALSE)
+  "[M+CO2Na]-" = c("[M+CO2Na]-", 1, calculateMass("CO2Na"), "H", "H", -1, FALSE),
+  "[2M+Na-2H]-" = c("[2M+Na-2H]-", 2, calculateMass("Na") - calculateMass("H")*2, "H", "H", -1, FALSE),
+  "[M-H-H2O]-" = c("[M-H-H2O]-", 1, - calculateMass("HH2O"), "H", "H", -1, FALSE)
 )
 adds$mass_multi <- as.numeric(adds$mass_multi)
 adds$mass_add <- as.numeric(adds$mass_add)
@@ -30,9 +33,9 @@ ui <- navbarPage(
                   value = "C28H37N5O7")
       ),
       mainPanel(
-        fluidRow(column(8, verbatimTextOutput("neutral"))),
-        fluidRow(column(8, verbatimTextOutput("pos"))),
-        fluidRow(column(8, verbatimTextOutput("neg")))
+        fluidRow(verbatimTextOutput("neutral")),
+        fluidRow(verbatimTextOutput("pos")),
+        fluidRow(verbatimTextOutput("neg"))
       )),
     hr(),
     sidebarLayout(
@@ -52,7 +55,7 @@ ui <- navbarPage(
                    step = 0.0001))
         )),
       mainPanel(
-        fluidRow(column(4, verbatimTextOutput("ppm")))
+        fluidRow(verbatimTextOutput("ppm"))
       )),
     hr(),
     sidebarLayout(
@@ -73,8 +76,8 @@ ui <- navbarPage(
                         )))
       ),
       mainPanel(
-        fluidRow(column(4, verbatimTextOutput("mzrange"))),
-        fluidRow(column(4, verbatimTextOutput("mzdif")))
+        fluidRow(verbatimTextOutput("mzrange")),
+        fluidRow(verbatimTextOutput("mzdif"))
       )
     )
   ), # close tabPanel Main
@@ -223,13 +226,16 @@ server <- function(input, output){
   output$pos <- renderPrint({ 
     mzneutral <- calculateMass(input$formula)
     unlist(mass2mz(mzneutral, 
-                   adduct = c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[2M+H]+", "[2M+Na]+"))) 
+                   adds[c("[M+H]+", "[M+NH4]+", "[M+Na]+", "[M+K]+", "[M+CH2O2Na]-",
+                              "[2M+H]+", "[2M+Na]+", 
+                              "[M+H-H2O]+"),])) 
   })
   
   output$neg <- renderPrint({ 
     mzneutral <- calculateMass(input$formula)
     unlist(mass2mz(mzneutral, 
-                   adds[c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[2M-H]-", "[2M+Na-2H]-"),]))
+                   adds[c("[M-H]-", "[M+Cl]-", "[M+CHO2]-", "[M+CO2Na]-", 
+                          "[2M-H]-", "[2M+Na-2H]-", "[M-H-H2O]-"),]))
   })
   
   output$ppm <- renderPrint({
